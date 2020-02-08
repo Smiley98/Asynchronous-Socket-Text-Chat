@@ -16,11 +16,7 @@ void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
 		std::string line;
 		std::getline(std::cin, line);
 		line += "\n";
-		//mutex.lock();
-		if (!mutex.try_lock()) {
-			printf("MUTEX LOCK FAIL!\n");
-			getchar();
-		}
+		mutex.lock();
 		queue.push(line);
 		mutex.unlock();
 	}
@@ -65,6 +61,10 @@ int main() {
 		return 1;
 	}
 
+	// 0 for blocking, 1 for non-blocking
+	u_long mode = 1;
+	ioctlsocket(soc, FIONBIO, &mode);
+
 	sockaddr_in fromAddr;
 	memset(&fromAddr, 0, sizeof(fromAddr));
 	int fromlen = sizeof(fromAddr);
@@ -73,31 +73,21 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(messageQueue), std::ref(queueMutex)).detach();
 
-	// Message loop
 	char messageBuffer[BUFFER_LENGTH];
-	while (true) {
-		static bool logging = true;
-		if (GetAsyncKeyState(VK_SPACE))
-			logging = !logging;
-		if (logging) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			printf("Receiving...\n");
-		}
+	UINT counter = 0;
 
-		//Receive messages if they exist
-		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, 0, 0) != SOCKET_ERROR)
+	// Message loop
+	while (true) {
+		//Receive messages if they exist.
+		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR)
 			printf("Received: %s\n", messageBuffer);
 		 
 		//Send all queued messages.
-		//queueMutex.lock();
-		if (!queueMutex.try_lock()) {
-			printf("MUTEX LOCK FAIL!\n");
-			getchar();
-		}
+		queueMutex.lock();
 		while (messageQueue.size() > 0) {
 			strcpy(messageBuffer, messageQueue.front().c_str());
 			if (sendto(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, fromlen) == SOCKET_ERROR) {
-				printf("Send failed! %i\n", WSAGetLastError());
+				printf("Server send failed! %i\n", WSAGetLastError());
 				getchar();
 			}
 			messageQueue.pop();

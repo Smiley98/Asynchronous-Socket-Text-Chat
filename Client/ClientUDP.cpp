@@ -51,6 +51,9 @@ int main() {
 		return 1;
 	}
 
+	u_long mode = 1;
+	ioctlsocket(soc, FIONBIO, &mode);
+
 	sockaddr_in fromAddr;
 	memset(&fromAddr, 0, sizeof(fromAddr));
 	int fromlen = sizeof(fromAddr);
@@ -59,18 +62,12 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(messageQueue), std::ref(queueMutex)).detach();
 
-	// Message loop
 	char messageBuffer[BUFFER_LENGTH];
-	while(true) {
-		static bool logging = true;
-		if (GetAsyncKeyState(VK_SPACE))
-			logging = !logging;
-		if (logging) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			printf("Receiving...\n");
-		}
+	UINT counter = 0;
 
-		//Receive messages if they exist
+	// Message loop
+	while(true) {
+		//Receive messages if they exist.
 		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR)
 			printf("Received: %s\n", messageBuffer);
 
@@ -79,7 +76,7 @@ int main() {
 		while (messageQueue.size() > 0) {
 			strcpy(messageBuffer, messageQueue.front().c_str());
 			if (sendto(soc, messageBuffer, BUFFER_LENGTH, 0, addressInfo->ai_addr, addressInfo->ai_addrlen) == SOCKET_ERROR) {
-				printf("Send failed! %i\n", WSAGetLastError());
+				printf("Client send failed! %i\n", WSAGetLastError());
 				getchar();
 			}
 			messageQueue.pop();
