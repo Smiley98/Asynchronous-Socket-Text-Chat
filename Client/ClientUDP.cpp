@@ -68,8 +68,9 @@ int main() {
 	// Message loop
 	while(true) {
 		//Receive messages if they exist.
-		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR)
+		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, 0, 0) != SOCKET_ERROR)
 			printf("Received: %s\n", messageBuffer);
+		//(sockaddr*)&fromAddr, &fromlen
 
 		//Send all queued messages.
 		queueMutex.lock();

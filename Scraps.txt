@@ -1,0 +1,7 @@
+static bool logging = false;
+if (GetAsyncKeyState(VK_SPACE))
+    logging = !logging;
+if (logging) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    printf("Receiving...\n");
+}

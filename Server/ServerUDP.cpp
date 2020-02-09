@@ -79,8 +79,12 @@ int main() {
 	// Message loop
 	while (true) {
 		//Receive messages if they exist.
-		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR)
+		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR) {
+			//Very useful. IP is unique even for clients on the same computer!!!
+			//char ipbuf[INET_ADDRSTRLEN];
+			//printf("IP address: %s\n", inet_ntop(AF_INET, &fromAddr, ipbuf, sizeof(ipbuf)));
 			printf("Received: %s\n", messageBuffer);
+		}
 		 
 		//Send all queued messages.
 		queueMutex.lock();
