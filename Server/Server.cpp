@@ -1,7 +1,7 @@
 #include "Server.h"
 #include <ws2tcpip.h>
+#include <thread>
 #pragma comment(lib, "Ws2_32.lib")
-#define PACKET_LENGTH 512
 
 bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b) {
 	return a.sin_addr.S_un.S_addr == b.sin_addr.S_un.S_addr && a.sin_port == b.sin_port;
@@ -9,12 +9,7 @@ bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b) {
 
 void Server::init()
 {
-	WSADATA wsa;
-	int result = WSAStartup(MAKEWORD(2, 2), &wsa);
-	if (result != 0) {
-		printf("Winsock2 initialization failed (%i).\n", result);
-		shutdown();
-	}
+	startupWSA();
 
 	addrinfo* addressInfo = NULL, hints;
 	memset(&hints, 0, sizeof(hints));
@@ -38,18 +33,20 @@ void Server::init()
 		shutdown();
 	}
 
-	// 0 for blocking, 1 for non-blocking
 	u_long mode = 1;
 	if (ioctlsocket(m_socket, FIONBIO, &mode) == SOCKET_ERROR) {
 		printf("Socket I/O control failed (%i).\n", WSAGetLastError());
 		shutdown();
 	}
+
+	std::thread(&Server::stateListener, this).detach();
 }
 
 void Server::listen()
 {
 	printf("Listening. . .\n");
-	while (true) {
+	m_state.store(State::CONNECT);
+	while (m_state.load() == State::CONNECT) {
 		SOCKADDR_IN fromAddress;
 		memset(&fromAddress, 0, sizeof(fromAddress));
 		int fromAddressLength = sizeof(fromAddress);
@@ -58,28 +55,47 @@ void Server::listen()
 		memset(packet, 0, PACKET_LENGTH);
 
 		if (recvfrom(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, &fromAddressLength) != SOCKET_ERROR) {
-			//\n is part of START because the input code appends \n.
-			if (strcmp(packet, "START\n") == 0)
-				run();
-			printf("%s\n", packet);
-
-			//Add the address if we have no clients, otherwise only add unique addresses (this sucks without maps).
-			if (m_clientAddresses.empty()) {
-				m_clientAddresses.push_back(fromAddress);
-				char ipbuf[INET_ADDRSTRLEN];
-				printf("%s connected.\n", inet_ntop(AF_INET, &fromAddress, ipbuf, sizeof(ipbuf)));
-			}
-			else {
-				bool found = false;
-				for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-					found |= compareAddresses(fromAddress, m_clientAddresses[i]);
-				}
-				if(!found)
-				{
+			//Connectivity packet to filter out unwanted trafic.
+			if (strcmp(packet, "CONNECTION\n") == 0) {
+				//Add the address if we have no clients, otherwise only add unique addresses (this sucks without maps).
+				if (m_clientAddresses.empty()) {
 					m_clientAddresses.push_back(fromAddress);
 					char ipbuf[INET_ADDRSTRLEN];
 					printf("%s connected.\n", inet_ntop(AF_INET, &fromAddress, ipbuf, sizeof(ipbuf)));
 				}
+				else {
+					bool found = false;
+					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
+						found |= compareAddresses(fromAddress, m_clientAddresses[i]);
+					}
+					if (!found)
+					{
+						m_clientAddresses.push_back(fromAddress);
+						char ipbuf[INET_ADDRSTRLEN];
+						printf("%s connected.\n", inet_ntop(AF_INET, &fromAddress, ipbuf, sizeof(ipbuf)));
+					}
+				}
+
+				//Send connection packet back to client repeatedly in case it gets lost.
+				sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, fromAddressLength);
+
+				//Auto-start once we have 2+ clients. See commented code below for manual start implementation.
+				if (m_clientAddresses.size() >= 2) {
+					strcpy(packet, "START\n");
+					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
+						sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
+					}
+					m_state = State::RUN;
+					//run();
+				}
+				//\n is part of START because the input code appends \n.
+				/*if (strcmp(packet, "START\n") == 0) {
+					//Send the message back to the clients so they know to start.
+					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
+						sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
+					}
+					run();
+				}*/
 			}
 		}
 	}
@@ -89,9 +105,9 @@ void Server::listen()
 //2. Send that message to any client but the sender.
 //3. Profit.
 void Server::run()
-{	//while m_state == States::Transmitting
+{
 	printf("Transmitting. . .\n");
-	while (true) {
+	while (m_state == State::RUN) {
 		SOCKADDR_IN fromAddress;
 		memset(&fromAddress, 0, sizeof(fromAddress));
 		int fromAddressLength = sizeof(fromAddress);
@@ -99,15 +115,15 @@ void Server::run()
 		char packet[PACKET_LENGTH];
 		memset(packet, 0, PACKET_LENGTH);
 
-		//Test this tomorrow. Should simply send the text back to the opposite client!
+		//Consider coming up with a condition to implicity shutdown ie m_clientAddresses.empty(); -> server broadcasts quit and shuts itself down.
 		if (recvfrom(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, &fromAddressLength) != SOCKET_ERROR) {
-			if (strcmp(packet, "QUIT") == 0)
+			if (strcmp(packet, "QUIT\n") == 0)
 				shutdown();
 
 			for (size_t i = 0; i < m_clientAddresses.size(); i++) {
 				if (compareAddresses(fromAddress, m_clientAddresses[i]))
 					continue;
-				sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);//Test if length is constant.
+				sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
 			}
 		}
 	}
@@ -115,7 +131,28 @@ void Server::run()
 
 void Server::shutdown()
 {
-	//freeaddrinfo(addressInfo);
+	char packet[PACKET_LENGTH] = "QUIT\n";
+	for (size_t i = 0; i < m_clientAddresses.size(); i++) {
+		sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], sizeof(m_clientAddresses[i]));
+	}
 	closesocket(m_socket);
-	WSACleanup();
+	cleanupWSA();
+}
+
+//Not sure if this is viable because more than one listener will consume packets meant for other listeners.
+//If we were to make a listener exclusively for packets that wouldn't be terrible.
+//We wouldn't be I/O bound regardless, but we might be able to bring clarity to our code by separating I/O from logic.
+void Server::stateListener()
+{
+	while (true) {
+		switch (m_state.load())
+		{
+		case CONNECT:
+			break;
+		case RUN:
+			break;
+		default:
+			break;
+		}
+	}
 }

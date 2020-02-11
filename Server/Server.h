@@ -1,15 +1,26 @@
 #pragma once
-#include <winsock2.h>
+#include "../Network/Network.h"
 #include <vector>
+#include <atomic>
 
-class Server
+enum State : unsigned char {
+	//INIT,
+	CONNECT,
+	RUN,
+	//QUIT
+};
+
+class Server : public Network
 {
 public:
 	void init();
 	void listen();
+private:
 	void run();
 	void shutdown();
-private:
+	void stateListener();
+
 	std::vector<SOCKADDR_IN> m_clientAddresses;
 	SOCKET m_socket = INVALID_SOCKET;
+	std::atomic_uchar m_state;
 };
