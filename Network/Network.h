@@ -132,7 +132,7 @@ std::string Packet<count>::toString()
 	byte string[count];
 	for (size_t i = 0; i < count; i++) {
 		if (this->at(i) == DELIMITER) {
-			memcpy(string, this->data(), i - 1);
+			memcpy(string, this->data(), i);
 			string[i] = '\0';
 			return std::string(reinterpret_cast<const char*>(string));
 		}
