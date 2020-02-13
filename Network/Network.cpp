@@ -1,6 +1,7 @@
 #include "Network.h"
-#include <ws2tcpip.h>
-#include <memory>
+//I'll need these if I lift connectivity functionality into here.
+//#include <ws2tcpip.h>
+//#include <memory>
 #pragma comment(lib, "Ws2_32.lib")
 
 void Network::startupWSA()

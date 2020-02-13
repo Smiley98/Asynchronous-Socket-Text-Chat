@@ -5,46 +5,50 @@
 #include <atomic>
 #include <cassert>
 #include <string>
-#define DELIMITER 69
-
-size_t packetSize() {
-	Packet<0> packet;
-	return 0;
-}
 
 typedef unsigned char byte;
 typedef std::atomic_uchar atomic_byte;
 
+//Packet memory is zero-initialized so it makes sense to represent none as 0.
 enum PacketType : byte {
-	//Zero is reserved. If the packet type is zero, something is wrong!
-	CONNECT = 1,
+	NONE = 0,
+	CONNECT,
 	QUIT,
-	NONE,
 	COUNT
 };
 
-//For optimal memory alignment, make count + sizeof(metadata) a multiple of 2.
+//This class is going to be ugly to use because its templated. Casting would created redundancies and look verbose.
 template<size_t count>
-class Packet :
-	//count + 1 because I'm reserving space for a tailing null termination character to support string operations.
-	public std::array<byte, count + 1>
+class Packet
 {
 public:
 	Packet();
 	Packet(const Packet<count>& packet);
 	Packet& operator=(const Packet<count>& packet);
+	void copyToPool(concurrency::concurrent_vector<Packet<count>>& packetPool);
+
 	std::string toString();
 	void fromString(const std::string& string);
-	void copyToPool(concurrency::concurrent_vector<Packet<count>>& packetPool);
-	PacketType type;
+
+	PacketType getType();
+	void setType(PacketType packetType);
+
 private:
+	//POD to ensure correct memory layout for serialization/deserialization.
+	//*Cannot assign values on default initialization otherwise not POD.
+	//*Class types call default constructor on default initialization, fundamental types are left uninitialized (so we gotta fill on packet create).
+	struct Internal {
+		PacketType m_type;
+		std::array<byte, count> m_binary;
+	} m_internal;
+
 	void copyFrom(const Packet& packet);
-	void autoFill();
+	void zeroInitialize();
 };
 
-class SmallPacket : public Packet<62> {};
-class MediumPacket : public Packet<254> {};
-class LargePacket : public Packet<1022> {};
+class SmallPacket : public Packet<63> {};
+class MediumPacket : public Packet<255> {};
+class LargePacket : public Packet<1023> {};
 
 typedef concurrency::concurrent_vector<SmallPacket> SmallPacketPool;
 typedef concurrency::concurrent_vector<MediumPacket> MediumPacketPool;
@@ -69,8 +73,7 @@ struct POD {
 template<size_t count>
 Packet<count>::Packet()
 {
-	autoFill();
-	this->back() = PacketType::NONE;
+	zeroInitialize();
 }
 
 template<size_t count>
@@ -87,30 +90,6 @@ Packet<count>& Packet<count>::operator=(const Packet<count>& packet)
 }
 
 template<size_t count>
-std::string Packet<count>::toString()
-{
-	if (this->front() == DELIMITER) return "";
-	byte string[count];
-	for (size_t i = 1; i < count; i++) {
-		if (this->at(i) == DELIMITER) {
-			memcpy(string, this->data(), i);
-			string[i] = '\0';
-			return std::string(reinterpret_cast<const char*>(string));
-		}
-	}
-}
-
-template<size_t count>
-void Packet<count>::fromString(const std::string& string)
-{
-#if _DEBUG
-	assert(string.size() < count);
-#endif
-	//string::copy() doesn't write '\0' to the end. Its essentially a memcpy for a c++ string.
-	string.copy(reinterpret_cast<char* const>(this->data()), string.size());
-}
-
-template<size_t count>
 void Packet<count>::copyToPool(concurrency::concurrent_vector<Packet<count>>& packetPool)
 {
 	packetPool.resize(packetPool.size() + 1);
@@ -118,13 +97,40 @@ void Packet<count>::copyToPool(concurrency::concurrent_vector<Packet<count>>& pa
 }
 
 template<size_t count>
-inline void Packet<count>::copyFrom(const Packet<count>& packet)
+std::string Packet<count>::toString()
 {
-	memcpy(this->data(), const_cast<Packet&>(packet).data(), count);
+	return std::string(reinterpret_cast<const char*>(m_internal.m_binary.data()));
 }
 
 template<size_t count>
-inline void Packet<count>::autoFill()
+void Packet<count>::fromString(const std::string& string)
 {
-	std::fill(this->begin(), this->end(), DELIMITER);
+	assert(string.size() < count);
+	string.copy(reinterpret_cast<char* const>(m_internal.m_binary.data()), string.size());
+}
+
+template<size_t count>
+PacketType Packet<count>::getType()
+{
+	assert(m_internal.m_type < PacketType::COUNT);
+	return m_internal.m_type;
+}
+
+template<size_t count>
+void Packet<count>::setType(PacketType packetType)
+{
+	assert(packetType < PacketType::COUNT);
+	m_internal.m_type = packetType;
+}
+
+template<size_t count>
+inline void Packet<count>::copyFrom(const Packet<count>& packet)
+{
+	memcpy(&m_internal, &packet.m_internal, sizeof(Internal));
+}
+
+template<size_t count>
+inline void Packet<count>::zeroInitialize()
+{
+	memset(&m_internal, 0, sizeof(Internal));
 }
