@@ -17,8 +17,34 @@ enum PacketType : byte {
 	COUNT
 };
 
+//Even this Packet structure is unnecessary! As long as we reserve element 0 for type and element 1+ for object we're set!
+//struct Packet {
+//	PacketType type;
+//	void* data;
+//};
+
+template<typename T>
+T* fromPacket(char* packet) { return reinterpret_cast<T*>(packet + 1); }
+//toPacket is literally just assign the data member.
+
+//Even this doesn't work because shit with overriden methods isn't POD. Just memcpy actual POD structures to/from packets!
+//struct Raw {
+//	//Writes data to packet.
+//	virtual void Serialize(char* packet) = 0;
+//
+//	//Reads data from packet.
+//	virtual void Deserialize(const char* packet) = 0;
+//};
+
+//Use case:
+//byte packet[PACKET_SIZE];
+//if not socket error,
+//	switch(packet[0])
+//		case INPUT:
+//			network.inputs.push_back(*fromPacket<Input>(packet));//Dereference to ensure a deep copy is appended.
+
 //This class is going to be ugly to use because its templated. Casting would created redundancies and look verbose.
-template<size_t count>
+/*template<size_t count>
 class Packet
 {
 public:
@@ -134,3 +160,4 @@ inline void Packet<count>::zeroInitialize()
 {
 	memset(&m_internal, 0, sizeof(Internal));
 }
+*/
