@@ -25,10 +25,9 @@ void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
 int main() {
 	// Initialize winsock
 	WSADATA wsa;
-	int error;
-	error = WSAStartup(MAKEWORD(2, 2), &wsa);
-	if (error != 0) {
-		printf("Failed to initialize %i\n", error);
+	int result = WSAStartup(MAKEWORD(2, 2), &wsa);
+	if (result != 0) {
+		printf("Failed to initialize %i\n", result);
 		return 1;
 	}
 
@@ -61,7 +60,6 @@ int main() {
 		return 1;
 	}
 
-	// 0 for blocking, 1 for non-blocking
 	u_long mode = 1;
 	ioctlsocket(soc, FIONBIO, &mode);
 
@@ -73,27 +71,22 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(messageQueue), std::ref(queueMutex)).detach();
 
-	char messageBuffer[BUFFER_LENGTH];
+	char packet[BUFFER_LENGTH];
 	UINT counter = 0;
 
 	// Message loop
 	while (true) {
 		//Receive messages if they exist.
-		if (recvfrom(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR) {
-			//Very useful. IP is unique even for clients on the same computer!!!
+		if (recvfrom(soc, packet, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, &fromlen) != SOCKET_ERROR)
+			printf("Received: %s\nType to chat.\n", packet);
 			//char ipbuf[INET_ADDRSTRLEN];
 			//printf("IP address: %s\n", inet_ntop(AF_INET, &fromAddr, ipbuf, sizeof(ipbuf)));
-			printf("Received: %s\n", messageBuffer);
-		}
 		 
 		//Send all queued messages.
 		queueMutex.lock();
 		while (messageQueue.size() > 0) {
-			strcpy(messageBuffer, messageQueue.front().c_str());
-			if (sendto(soc, messageBuffer, BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, fromlen) == SOCKET_ERROR) {
+			if (sendto(soc, messageQueue.front().c_str(), BUFFER_LENGTH, 0, (sockaddr*)&fromAddr, fromlen) == SOCKET_ERROR)
 				printf("Server send failed! %i\n", WSAGetLastError());
-				getchar();
-			}
 			messageQueue.pop();
 		}
 		queueMutex.unlock();
@@ -113,7 +106,3 @@ int main() {
 
 	return 0;
 }
-
-//See the IP that a message came from:
-//char ipbuf[INET_ADDRSTRLEN];
-//printf("IP address: %s\n", inet_ntop(AF_INET, &fromAddr, ipbuf, sizeof(ipbuf)));

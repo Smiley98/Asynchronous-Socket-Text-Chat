@@ -7,6 +7,11 @@
 #include <string>
 #define DELIMITER 69
 
+size_t packetSize() {
+	Packet<0> packet;
+	return 0;
+}
+
 typedef unsigned char byte;
 typedef std::atomic_uchar atomic_byte;
 
@@ -18,48 +23,28 @@ enum PacketType : byte {
 	COUNT
 };
 
-//Not the worst idea, but implementing this would mess up either back() or front(), and actually complicate to/from string. 
-/*struct Metadata {
-	union {
-		struct {
-			byte metadata[8] = { '\0' };
-		};
-		struct {
-			byte null;
-			byte type;
-			byte reserved_byte_3;
-			byte reserved_byte_4;
-			byte reserved_byte_5;
-			byte reserved_byte_6;
-			byte reserved_byte_7;
-			byte reserved_byte_8;
-		};
-	};
-};*/
-
+//For optimal memory alignment, make count + sizeof(metadata) a multiple of 2.
 template<size_t count>
 class Packet :
-	public std::array<byte, count>
+	//count + 1 because I'm reserving space for a tailing null termination character to support string operations.
+	public std::array<byte, count + 1>
 {
 public:
 	Packet();
-	//Packet(const char* string);
-	//Packet(const std::string& string);
 	Packet(const Packet<count>& packet);
 	Packet& operator=(const Packet<count>& packet);
 	std::string toString();
 	void fromString(const std::string& string);
-	PacketType getType();
-	void setType(PacketType packetType);
 	void copyToPool(concurrency::concurrent_vector<Packet<count>>& packetPool);
+	PacketType type;
 private:
 	void copyFrom(const Packet& packet);
 	void autoFill();
 };
 
-class SmallPacket : public Packet<64> {};
-class MediumPacket : public Packet<256> {};
-class LargePacket : public Packet<1024> {};
+class SmallPacket : public Packet<62> {};
+class MediumPacket : public Packet<254> {};
+class LargePacket : public Packet<1022> {};
 
 typedef concurrency::concurrent_vector<SmallPacket> SmallPacketPool;
 typedef concurrency::concurrent_vector<MediumPacket> MediumPacketPool;
@@ -88,30 +73,6 @@ Packet<count>::Packet()
 	this->back() = PacketType::NONE;
 }
 
-/*template<size_t count>
-Packet<count>::Packet(const char* string)
-{
-	autoFill();
-#if _DEBUG
-	assert(strlen(string) < count);
-#endif
-	strcpy(this->data(), string);
-	this->back() = PacketType::NONE;
-}
-
-template<size_t count>
-Packet<count>::Packet(const std::string& string)
-{
-	autoFill();
-#if _DEBUG
-	assert(string.size() < count);
-#endif
-	//No longer using null terminators as delimiters.
-	//this->at(string.copy(this->data(), string.size())) = '\0';
-	string.copy(this->data(), string.size());
-	this->back() = PacketType::NONE;
-}*/
-
 template<size_t count>
 Packet<count>::Packet(const Packet<count>& packet)
 {
@@ -130,7 +91,7 @@ std::string Packet<count>::toString()
 {
 	if (this->front() == DELIMITER) return "";
 	byte string[count];
-	for (size_t i = 0; i < count; i++) {
+	for (size_t i = 1; i < count; i++) {
 		if (this->at(i) == DELIMITER) {
 			memcpy(string, this->data(), i);
 			string[i] = '\0';
@@ -145,25 +106,8 @@ void Packet<count>::fromString(const std::string& string)
 #if _DEBUG
 	assert(string.size() < count);
 #endif
+	//string::copy() doesn't write '\0' to the end. Its essentially a memcpy for a c++ string.
 	string.copy(reinterpret_cast<char* const>(this->data()), string.size());
-}
-
-template<size_t count>
-PacketType Packet<count>::getType()
-{
-#if _DEBUG
-	assert(this->back() < PacketType::COUNT);
-#endif
-	return this->back();
-}
-
-template<size_t count>
-void Packet<count>::setType(PacketType packetType)
-{
-#if _DEBUG
-	assert(packetType < PacketType::COUNT);
-#endif
-	this->back() = packetType;
 }
 
 template<size_t count>

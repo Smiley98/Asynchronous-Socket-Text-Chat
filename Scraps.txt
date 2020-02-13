@@ -5,3 +5,40 @@ if (logging) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     printf("Receiving...\n");
 }
+
+//Not the worst idea, but implementing this would mess up either back() or front(), and actually complicate to/from string. 
+/*struct Metadata {
+	union {
+		struct {
+			byte metadata[8] = { '\0' };
+		};
+		struct {
+			byte null;
+			byte type;
+			byte reserved_byte_3;
+			byte reserved_byte_4;
+			byte reserved_byte_5;
+			byte reserved_byte_6;
+			byte reserved_byte_7;
+			byte reserved_byte_8;
+		};
+	};
+};*/
+
+template<size_t count>
+PacketType Packet<count>::getType()
+{
+#if _DEBUG
+	assert(this->back() < PacketType::COUNT);
+#endif
+	return this->back();
+}
+
+template<size_t count>
+void Packet<count>::setType(PacketType packetType)
+{
+#if _DEBUG
+	assert(packetType < PacketType::COUNT);
+#endif
+	this->back() = packetType;
+}
