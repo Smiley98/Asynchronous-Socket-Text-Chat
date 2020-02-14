@@ -23,11 +23,11 @@ public:
 	std::string toString();
 	void fromString(const std::string& string);
 
-	//Writes size amount of m_internal.raw.data() + internalBegin to memory + externalBegin.
-	void read (      byte* memory, size_t externalBegin = 0, size_t internalBegin = 0, size_t size = count);
+	//Writes size amount of m_internal.raw.data() + offset to memory.
+	void read (      byte* memory, size_t offset = 0, size_t size = count);
 
-	//Writes size amount of memory + externalBegin to m_internal.raw.data() + internalBegin.
-	void write(const byte* memory, size_t externalBegin = 0, size_t internalBegin = 0, size_t size = count);
+	//Writes size amount of memory to m_internal.raw.data() + offset.
+	void write(const byte* memory, size_t offset = 0, size_t size = count);
 
 	PacketType getType();
 	void setType(PacketType packetType);
@@ -116,17 +116,17 @@ void PacketBase<count>::fromString(const std::string& string)
 }
 
 template<size_t count>
-void PacketBase<count>::read(byte* memory, size_t externalBegin, size_t internalBegin, size_t size)
+void PacketBase<count>::read(byte* memory, size_t offset, size_t size)
 {
-	assert(internalBegin + size <= count);
-	memcpy(memory + externalBegin, m_internal.m_raw.data() + internalBegin, size);
+	assert(offset + size <= count);
+	memcpy(memory, m_internal.m_raw.data() + offset, size);
 }
 
 template<size_t count>
-void PacketBase<count>::write(const byte* memory, size_t externalBegin, size_t internalBegin, size_t size)
+void PacketBase<count>::write(const byte* memory, size_t offset, size_t size)
 {
-	assert(internalBegin + size <= count);
-	memcpy(m_internal.m_raw.data() + internalBegin, memory + externalBegin, size);
+	assert(offset + size <= count);
+	memcpy(m_internal.m_raw.data() + offset, memory, size);
 }
 
 template<size_t count>

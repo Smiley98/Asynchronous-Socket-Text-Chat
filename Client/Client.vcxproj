@@ -20,7 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Client.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="unit_test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
