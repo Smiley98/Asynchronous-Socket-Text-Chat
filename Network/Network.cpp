@@ -1,7 +1,6 @@
 #include "Network.h"
-//I'll need these if I lift connectivity functionality into here.
-//#include <ws2tcpip.h>
-//#include <memory>
+//#include <ws2tcpip.h>//Needed if I lift connectivity into here.
+#include <WinSock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 
 void Network::startupWSA()
@@ -17,4 +16,20 @@ void Network::startupWSA()
 void Network::cleanupWSA()
 {
 	WSACleanup();
+}
+
+Packet::Packet()
+{
+	init();
+}
+
+Packet::Packet(const Packet& packet)
+{
+	clone(packet);
+}
+
+Packet& Packet::operator=(const Packet& packet)
+{
+	clone(packet);
+	return *this;
 }

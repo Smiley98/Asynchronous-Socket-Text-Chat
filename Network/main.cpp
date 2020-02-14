@@ -2,10 +2,11 @@
 #include <iostream>
 
 int main() {
-	SmallPacket smallPacket;
-	smallPacket.fromString("Hello world from packet!\n");
-	MediumPacket mediumPacket;
-	LargePacket largePacket;
-	printf("%s", smallPacket.toString().c_str());
+	Packet packet;
+	packet.fromString("Hello world from packet!\n");
+	Packet packet2 = packet;
+
+	packet2 = packet;
+	printf("%s", packet2.toString().c_str());
 	return getchar();
 }
