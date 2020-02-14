@@ -1,7 +1,8 @@
 #pragma once
-#include <string>
-#include <array>
 #include <cassert>
+#include <array>
+#include <vector>
+#include <string>
 
 typedef unsigned char byte;
 enum PacketType : byte {
@@ -21,9 +22,12 @@ public:
 
 	std::string toString();
 	void fromString(const std::string& string);
-	
-	void read(byte* dst, size_t range = count, size_t offset = 0);
-	void write(const byte* src, size_t size);
+
+	//Writes size amount of m_internal.raw.data() + internalBegin to memory + externalBegin.
+	void read (      byte* memory, size_t externalBegin = 0, size_t internalBegin = 0, size_t size = count);
+
+	//Writes size amount of memory + externalBegin to m_internal.raw.data() + internalBegin.
+	void write(const byte* memory, size_t externalBegin = 0, size_t internalBegin = 0, size_t size = count);
 
 	PacketType getType();
 	void setType(PacketType packetType);
@@ -112,17 +116,17 @@ void PacketBase<count>::fromString(const std::string& string)
 }
 
 template<size_t count>
-void PacketBase<count>::read(byte* dst, size_t range, size_t offset)
+void PacketBase<count>::read(byte* memory, size_t externalBegin, size_t internalBegin, size_t size)
 {
-	assert(range + offset <= count);
-	memcpy(dst, m_internal.m_raw.data() + offset, range);
+	assert(internalBegin + size <= count);
+	memcpy(memory + externalBegin, m_internal.m_raw.data() + internalBegin, size);
 }
 
 template<size_t count>
-void PacketBase<count>::write(const byte* bytes, size_t size)
+void PacketBase<count>::write(const byte* memory, size_t externalBegin, size_t internalBegin, size_t size)
 {
-	assert(size <= count);
-	memcpy(m_internal.m_raw.data(), bytes, size);
+	assert(internalBegin + size <= count);
+	memcpy(m_internal.m_raw.data() + internalBegin, memory + externalBegin, size);
 }
 
 template<size_t count>
