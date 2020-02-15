@@ -23,11 +23,11 @@ public:
 	std::string toString();
 	void fromString(const std::string& string);
 
-	//Writes size amount of m_internal.raw.data() + offset to memory.
-	void read (      byte* memory, size_t offset = 0, size_t size = count);
+	//Writes size amount of memory to dst from m_internal.raw.data() + offset.
+	void read (      void* dst, size_t size = count, size_t offset = 0);
 
-	//Writes size amount of memory to m_internal.raw.data() + offset.
-	void write(const byte* memory, size_t offset = 0, size_t size = count);
+	//Writes size amount of memory to m_internal.raw.data() + offset from src.
+	void write(const void* src, size_t size = count, size_t offset = 0);
 
 	PacketType getType();
 	void setType(PacketType packetType);
@@ -105,7 +105,10 @@ PacketBase<count>& PacketBase<count>::operator=(const PacketBase<count>& packet)
 template<size_t count>
 std::string PacketBase<count>::toString()
 {
-	return std::string(reinterpret_cast<const char*>(m_internal.m_raw.data()));
+	char cstring[count + 1];
+	memcpy(cstring, m_internal.m_raw.data(), count);
+	cstring[count] = '\0';
+	return std::string(cstring);
 }
 
 template<size_t count>
@@ -116,17 +119,17 @@ void PacketBase<count>::fromString(const std::string& string)
 }
 
 template<size_t count>
-void PacketBase<count>::read(byte* memory, size_t offset, size_t size)
+void PacketBase<count>::read(void* dst, size_t size, size_t offset)
 {
-	assert(offset + size <= count);
-	memcpy(memory, m_internal.m_raw.data() + offset, size);
+	assert(size + offset <= count);
+	memcpy(dst, m_internal.m_raw.data() + offset, size);
 }
 
 template<size_t count>
-void PacketBase<count>::write(const byte* memory, size_t offset, size_t size)
+void PacketBase<count>::write(const void* src, size_t size, size_t offset)
 {
-	assert(offset + size <= count);
-	memcpy(m_internal.m_raw.data() + offset, memory, size);
+	assert(size + offset <= count);
+	memcpy(m_internal.m_raw.data() + offset, src, size);
 }
 
 template<size_t count>
