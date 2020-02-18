@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GNWServer.cpp" />
-    <ClCompile Include="unit_test_server.cpp" />
     <ClCompile Include="Server.cpp" />
+    <ClCompile Include="unit_test_server.cpp" />
+    <ClCompile Include="ServerBase.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ServerBase.h" />
     <ClInclude Include="Server.h" />
-    <ClInclude Include="GNWServer.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

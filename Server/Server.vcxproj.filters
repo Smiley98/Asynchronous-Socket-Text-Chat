@@ -15,21 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Server.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="unit_test_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GNWServer.cpp">
+    <ClCompile Include="ServerBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Server.h">
+    <ClInclude Include="ServerBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GNWServer.h">
+    <ClInclude Include="Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

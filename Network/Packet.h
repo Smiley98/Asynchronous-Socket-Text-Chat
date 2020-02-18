@@ -13,12 +13,16 @@ enum PacketType : byte {
 };
 
 //class Network;
+class ServerBase;
+class ClientBase;
 class Server;
 class Client;
 template<size_t count>
 class PacketBase
 {
 	//friend Network;
+	friend ServerBase;
+	friend ClientBase;
 	friend Server;
 	friend Client;
 public:

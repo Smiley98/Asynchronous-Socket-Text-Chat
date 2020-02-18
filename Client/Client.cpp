@@ -1,64 +1,82 @@
 #include "Client.h"
+#include <thread>
+#include <future>
+#include <cstdio>
+#define CLIENT_LOGGING true
 
-bool Client::exchange(PacketType packetType)
+void Client::start()
 {
-	Packet packet(packetType);
-	send(packet);
-	//Peek rather than consume packets incase we've received a non-packetType packet.
-	if (recv(MSG_PEEK))
-		return find(packetType, m_incoming).size() > 0;
-	return false;
-}
-
-void Client::sendAll(int flags, bool clear)
-{
-	for (const Packet& packet : m_outgoing)
-		send(packet, flags);
-	if(clear)
-		m_outgoing.clear();
-}
-
-void Client::recvAll(int flags, bool add)
-{
-	while (recv(flags, add));
-}
-
-bool Client::send(const Packet& packet, int flags)
-{
-	return sendto(m_socket, packet.signedBytes(), packet.size(), flags, m_address->ai_addr, m_address->ai_addrlen) != SOCKET_ERROR;
-}
-
-bool Client::recv(int flags, bool add)
-{
-	Packet packet;
-	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), flags, NULL, NULL) != SOCKET_ERROR) {
-		if (add)
-			m_incoming.push_back(packet);
-		return true;
+	if (!m_running) {
+		initialize();
+		std::thread(&run, this).detach();
+		m_running = true;
 	}
-	return false;
 }
 
-std::vector<size_t> Client::find(PacketType packetType, const PacketBuffer& packetBuffer)
+bool Client::running()
 {
-	std::vector<size_t> indices;
-	for (size_t i = 0; i < packetBuffer.size(); i++) {
-		if (packetBuffer[i].getType() == packetType)
-			indices.push_back(i);
+	return m_running;
+}
+
+ClientState Client::getState()
+{
+	return static_cast<ClientState>(m_state.load());
+}
+
+void Client::setState(ClientState clientState)
+{
+	m_state.store(clientState);
+#ifdef CLIENT_LOGGING
+	switch (clientState)
+	{
+	case IDLE:
+		printf("Idling...\n");
+		break;
+	case QUIT:
+		printf("Quitting.\n");
+		break;
+	case CONNECT:
+		printf("Connecting.\n");
+		break;
+	case DISCONNECT:
+		printf("Disconnecting.\n");
+		break;
+	case CONSUME:
+		printf("Consuming.\n");
+		break;
+	default:
+		break;
 	}
-	return indices;
+#endif
 }
 
-void Client::initialize()
+void Client::run()
 {
-	Network::initialize();
-	m_socket = createSocket();
-	m_address = createAddress();
-}
-
-void Client::shutdown()
-{
-	closesocket(m_socket);
-	freeaddrinfo(m_address);
-	Network::shutdown();
+	while (m_running) {
+		switch (getState()) {
+		case IDLE:
+			break;
+		case QUIT:
+			shutdown();
+			m_running = false;
+			break;
+		case CONNECT: {
+			if (exchange(PacketType::CONNECT))
+				setState(CONSUME);
+			break;
+		}
+		case DISCONNECT: {
+			if (exchange(PacketType::DISCONNECT))
+				setState(QUIT);
+			break;
+		}
+		//Sends/receives all incoming/outgoing packets, leaving the client free to enque/deque packets at will!
+		case CONSUME:
+			std::future<void> syncSend = std::async(&Client::sendAll, this, 0, true);
+			std::future<void> syncRecv = std::async(&Client::recvAll, this, 0, true);
+			syncSend.wait();
+			syncRecv.wait();
+			break;
+		}
+	}
 }

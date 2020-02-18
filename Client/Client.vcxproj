@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ClientBase.cpp" />
     <ClCompile Include="Client.cpp" />
-    <ClCompile Include="ClientController.cpp" />
     <ClCompile Include="unit_test_client.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ClientBase.h" />
     <ClInclude Include="Client.h" />
-    <ClInclude Include="ClientController.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
