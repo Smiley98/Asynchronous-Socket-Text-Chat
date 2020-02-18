@@ -3,46 +3,60 @@
 #include <thread>
 #pragma comment(lib, "Ws2_32.lib")
 
-bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b) {
-	return a.sin_addr.S_un.S_addr == b.sin_addr.S_un.S_addr && a.sin_port == b.sin_port;
+//bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b) {
+//	return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
+//}
+
+bool ClientDesc::operator==(const ClientDesc& desc) const
+{
+	return m_address.sin_addr.s_addr == desc.m_address.sin_addr.s_addr && m_address.sin_port == desc.m_address.sin_port;
 }
 
 void Server::init()
 {
 	startupWSA();
-
-	addrinfo* addressInfo = NULL, hints;
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_protocol = IPPROTO_UDP;
-	hints.ai_flags = AI_PASSIVE;
-	if (getaddrinfo(NULL, "8888", &hints, &addressInfo) != 0) {
-		printf("Address resolution failed (%i).\n", WSAGetLastError());
-		shutdown();
-	}
-
-	m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (m_socket == INVALID_SOCKET) {
-		printf("Socket creation failed (%i).\n", WSAGetLastError());
-		shutdown();
-	}
-
-	if (bind(m_socket, addressInfo->ai_addr, (int)addressInfo->ai_addrlen) == SOCKET_ERROR) {
-		printf("Bind failed (%i).\n", WSAGetLastError());
-		shutdown();
-	}
-
-	u_long mode = 1;
-	if (ioctlsocket(m_socket, FIONBIO, &mode) == SOCKET_ERROR) {
-		printf("Socket I/O control failed (%i).\n", WSAGetLastError());
-		shutdown();
-	}
-
-	std::thread(&Server::stateListener, this).detach();
+	m_socket = createSocket();
+	m_address = createAddress(true, "");
+	bindSocket(m_socket, m_address);
 }
 
-void Server::listen()
+void Server::shutdown()
+{
+	destroySocket(m_socket);
+	freeaddrinfo(m_address);
+	cleanupWSA();
+}
+
+//void Server::connect()
+//{
+//}
+//
+//void Server::disconnect()
+//{
+//}
+
+void Server::reroute(const Packet& packet, const ClientDesc& exemptClient, int flags)
+{
+	for (ClientDesc& client : m_clients) {
+		if(exemptClient == client)
+			continue;
+		this->send(packet, client, flags);
+	}
+}
+
+void Server::broadcast(const Packet& packet, int flags)
+{
+	for (ClientDesc& client : m_clients) {
+		this->send(packet, client, flags);
+	}
+}
+
+void Server::send(const Packet& packet, const ClientDesc& client, int flags)
+{
+	sendto(m_socket, packet.signedBytes(), packet.size(), flags, reinterpret_cast<const SOCKADDR*>(&client.m_address), client.m_addressLength);
+}
+
+/*void Server::connect()
 {
 	printf("Listening. . .\n");
 	m_state.store(State::CONNECT);
@@ -89,13 +103,13 @@ void Server::listen()
 					//run();
 				}
 				//\n is part of START because the input code appends \n.
-				/*if (strcmp(packet, "START\n") == 0) {
-					//Send the message back to the clients so they know to start.
-					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-						sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
-					}
-					run();
-				}*/
+				//if (strcmp(packet, "START\n") == 0) {
+				//	//Send the message back to the clients so they know to start.
+				//	for (size_t i = 0; i < m_clientAddresses.size(); i++) {
+				//		sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
+				//	}
+				//	run();
+				//}
 			}
 		}
 	}
@@ -155,4 +169,4 @@ void Server::stateListener()
 			break;
 		}
 	}
-}
+}*/

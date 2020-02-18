@@ -184,4 +184,15 @@ inline void Packet<count>::zeroInitialize()
 {
 	memset(&m_internal, 0, sizeof(Internal));
 }
+
+ClientState clientState = getState();
+if (clientState == INITIALIZING) {
+	init();
+	std::thread(&run_internal, this).detach();
+	setState(INITIALIZED);
+	m_running = true;
+}
+else {
+	printf("Invalid call. Client state (%c) is not INITIALIZING.\n", clientState);
+}
 */
