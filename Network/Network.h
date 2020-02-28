@@ -3,8 +3,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <vector>
-#include <concurrent_vector.h>
-typedef concurrency::concurrent_vector<Packet> PacketBuffer;
+typedef std::vector<Packet> PacketBuffer;
 
 //Returns the indices in which packets of type packetType can be found within the packet buffer.
 std::vector<size_t> findPacketOfType(PacketType packetType, const PacketBuffer& packetBuffer);

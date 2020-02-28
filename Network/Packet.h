@@ -26,18 +26,20 @@ enum PacketMode : byte {
 };
 
 //class Network;
-class ServerBase;
+class Address;
 class ClientBase;
-class Server;
-class Client;
+class ServerBase;
+//class Server;
+//class Client;
 template<size_t count>
 class PacketBase
 {
 	//friend Network;
-	friend ServerBase;
+	friend Address;
 	friend ClientBase;
-	friend Server;
-	friend Client;
+	friend ServerBase;
+	//friend Server;
+	//friend Client;
 public:
 	PacketBase();
 	PacketBase(PacketType packetType, PacketMode packetMode);
@@ -91,8 +93,8 @@ class Packet :
 	public PacketBase<512>
 {
 	//friend Network;
-	friend Server;
-	friend Client;
+	//friend Server;
+	//friend Client;
 
 public:
 	Packet() = default;

@@ -1,0 +1,80 @@
+//ServerBase.h
+//Tries to exchange a packet of the desired type with the desired client. 
+	//bool exchangeWith(PacketType packetType, Client& client);
+	
+//Send functions.
+	//Sends packet to the specified client.
+	//void sendTo(const Packet& packet, const Client& client, int flags = 0);
+
+	//Send all packets to the desired client.
+	//void sendAllTo(const Client& client, int flags = 0);
+
+//Receive functions.
+	//Receives packet from the specified client.
+	//bool recvFrom(Client& client);
+
+	//Receive all packets from the specified client.
+	//void recvAllFrom(Client& client);
+
+	//Receives anything and everything till we can't receive no more!
+	//void recvAll();
+
+//ServerBase.cpp
+//No good because we don't store packets.
+//bool ServerBase::exchangeWith(PacketType packetType, Client& client)
+//{
+//	Packet packet(packetType, PacketMode::TWO_WAY);
+//	client.sendTo(m_socket, packet);
+//	if (client.recvFrom(m_socket, packet))
+//		return true;//Figure out how to find later
+//	//if (recvFrom(client))
+//	//	return findPacketOfType(packetType, client.m_incoming).size() > 0;
+//	return false;
+//}
+
+
+//Moved to client.
+//bool ServerBase::recvFrom(Client& client)
+//{
+//	Packet packet;
+//	Address address;
+//	//Peek the packet so we can compare the written address with that of the desired clients address (otherwise we'd overwrite the client's address which isn't good)!
+//	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), MSG_PEEK, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
+//		if (address == client.m_address) {
+//			//Consume the packet if its from the desired client.
+//			client.recvFrom(m_socket, packet);
+//			client.m_incoming.push_back(packet);
+//			return true;
+//		}
+//	}
+//	//Return false if nothing received in general or from the desired client.
+//	return false;
+//}
+
+//void ServerBase::recvAllFrom(Client& client)
+//{
+//	while (recvFrom(client));
+//}
+
+//This is valid but I can't while this because there's currently no incoming/outgoing separation. Have to send upon receive.
+//void ServerBase::recvAll()
+//{
+//	while (recvAny());
+//}
+
+//void ServerBase::sendTo(const Packet& packet, const Client& client, int flags)
+//{
+//	client.sendTo(m_socket, packet, flags);
+//}
+
+//I guess this would send all this client's outgoing packets?
+//void ServerBase::sendAllTo(const Client& client, int flags)
+//{
+//	for (const Packet& packet : client.m_outgoing)
+//		sendTo(packet, client, flags);
+//}
+
+//Inside recvAny():
+//This is no good because ip strings aren't unique. Would be interesting to consider passing just the SAI cause that produced seemingly unique strings.
+//char ipBuffer[INET_ADDRSTRLEN];
+//inet_ntop(AF_INET, &address.m_sai.sin_addr, ipBuffer, sizeof(ipBuffer))

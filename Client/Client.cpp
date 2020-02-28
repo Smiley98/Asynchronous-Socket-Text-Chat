@@ -65,12 +65,12 @@ void Client::run()
 			m_running = false;
 			break;
 		case CONNECT: {
-			if (exchange(PacketType::CONNECT))
+			if (exchange(PacketType::CONNECT, PacketMode::TWO_WAY))
 				setState(CONSUME);
 			break;
 		}
 		case DISCONNECT: {
-			if (exchange(PacketType::DISCONNECT))
+			if (exchange(PacketType::DISCONNECT, PacketMode::TWO_WAY))
 				setState(QUIT);
 			break;
 		}

@@ -1,19 +1,23 @@
 #pragma once
 #include "../Network/Network.h"
+#include <mutex>
 
 class ClientBase :
 	public Network
 {
 public:
+	void copyIncoming(PacketBuffer& incoming, bool clear = true);
+	void addOutgoing(const Packet& packet);
+
+protected:
 	//Container of all packets received by this client from the server.
 	PacketBuffer m_incoming;
 
 	//Container of all packets waiting to be sent from this client to the server.
 	PacketBuffer m_outgoing;
 
-protected:
 	//Tries to exchange a packet of the desired type with the server. 
-	bool exchange(PacketType packetType);
+	bool exchange(PacketType packetType, PacketMode packetMode);
 
 	//Tries to send all outgoing packets.
 	void sendAll(int flags = 0, bool clear = true);
@@ -21,10 +25,10 @@ protected:
 	//Blocks until there's no packets to receive.
 	void recvAll(int flags = 0, bool add = true);
 
-	//Tries to send the passed in packet to the server.
+	//Tries to send the passed in packet to the server. (Not thread safe).
 	bool send(const Packet& packet, int flags = 0);
 
-	//Tries to receive packets from the server.
+	//Tries to receive packets from the server. (Not thread safe).
 	bool recv(int flags = 0, bool add = true);
 
 	//Initialize Winsock2 and setup a client socket.
@@ -33,11 +37,10 @@ protected:
 	//Cleanup Winsock2, client socket, and client address.
 	void shutdown();
 
-	//Sidenotes:
-	//1. I don't like how add() copies to out packets, but its allows us to buffer our output for a more elegant program so its necessary.
-	//2. Implement an allocator that uses static memory. Vectors are resizing constantly which would be costly if scaled up.
-
+	//TODO: Make a static allocator for the packet buffers so vectors can grow/shrink faster!
 private:
 	ADDRINFO* m_address = NULL;
 	SOCKET m_socket = INVALID_SOCKET;
+	std::mutex m_incomingMutex;
+	std::mutex m_outgoingMutex;
 };
