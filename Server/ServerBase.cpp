@@ -1,13 +1,186 @@
 #include "ServerBase.h"
+#include <iostream>
+#undef ERROR //Lol something in windows made this 0 and it messes up my enums xD
 
-bool ClientDesc::operator==(const ClientDesc& desc) const
+bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
 {
-	return m_address.sin_addr.s_addr == desc.m_address.sin_addr.s_addr && m_address.sin_port == desc.m_address.sin_port;
+	return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
 }
 
-void ServerBase::init()
+ULONG AddressHash::operator()(const Address& key) const
 {
-	initialize();
+	return key.m_sai.sin_addr.s_addr ^ key.m_sai.sin_port;
+}
+
+Address::Address()
+{
+	memset(this, 0, sizeof(Address));
+}
+
+bool Address::operator==(const Address& address) const
+{
+	return compareAddresses(m_sai, address.m_sai);
+}
+
+bool Client::operator==(const Client& client) const
+{
+	return m_address == client.m_address;
+}
+
+bool Client::sendTo(SOCKET soc, const Packet& packet) const
+{
+	return sendto(soc, packet.signedBytes(), packet.size(), 0, reinterpret_cast<const SOCKADDR*>(&m_address.m_sai), m_address.m_length) != SOCKET_ERROR;
+}
+
+bool Client::recvFrom(SOCKET soc, Packet& packet)
+{
+	Address address;
+	if (recvfrom(soc, nullptr, 0, MSG_PEEK, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
+		if(address == m_address)
+			return recvfrom(soc, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&m_address.m_sai), &m_address.m_length) != SOCKET_ERROR;
+	}
+	return false;
+}
+  
+void ServerBase::send(const Packet& packet, const Client& sender)
+{
+	switch (packet.getMode())
+	{
+	case ONE_WAY:
+		handlePacket(packet);
+		break;
+	case TWO_WAY:
+		sender.sendTo(m_socket, packet);
+		handlePacket(packet);
+		break;
+	case REROUTE:
+		reroute(packet, sender);
+		handlePacket(packet);
+		break;
+	case BROADCAST:
+		broadcast(packet);
+		handlePacket(packet);
+		break;
+	//case SPECIFIC:
+	//	for (const Address& address : recipients) {
+	//
+	//	}
+	//	break;
+	case ERROR:
+		printf("Error packet received!\n");
+		printf("Error packet contents: %s", packet.toString().c_str());
+		break;
+	default:
+		break;
+	}
+}
+
+void ServerBase::handlePacket(const Packet& packet)
+{
+	switch (packet.getType())
+	{
+	case GENERIC:
+		break;
+	case CONNECT:
+		break;
+	case DISCONNECT:
+		break;
+	case ERROR:
+		break;
+	default:
+		break;
+	}
+}
+
+void ServerBase::recv()
+{
+}
+
+//No good because we don't store packets.
+//bool ServerBase::exchangeWith(PacketType packetType, Client& client)
+//{
+//	Packet packet(packetType, PacketMode::TWO_WAY);
+//	client.sendTo(m_socket, packet);
+//	if (client.recvFrom(m_socket, packet))
+//		return true;//Figure out how to find later
+//	//if (recvFrom(client))
+//	//	return findPacketOfType(packetType, client.m_incoming).size() > 0;
+//	return false;
+//}
+
+void ServerBase::broadcast(const Packet& packet)
+{
+	for (auto itr = m_clientMap.begin(); itr != m_clientMap.end(); itr++)
+		itr->second.sendTo(m_socket, packet);
+}
+
+void ServerBase::reroute(const Packet& packet, const Client& exemptClient)
+{
+	for (auto itr = m_clientMap.begin(); itr != m_clientMap.end(); itr++) {
+		if(itr->second == exemptClient)
+			continue;
+		itr->second.sendTo(m_socket, packet);
+	}
+}
+
+//Moved to client.
+//bool ServerBase::recvFrom(Client& client)
+//{
+//	Packet packet;
+//	Address address;
+//	//Peek the packet so we can compare the written address with that of the desired clients address (otherwise we'd overwrite the client's address which isn't good)!
+//	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), MSG_PEEK, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
+//		if (address == client.m_address) {
+//			//Consume the packet if its from the desired client.
+//			client.recvFrom(m_socket, packet);
+//			client.m_incoming.push_back(packet);
+//			return true;
+//		}
+//	}
+//	//Return false if nothing received in general or from the desired client.
+//	return false;
+//}
+
+//void ServerBase::recvAllFrom(Client& client)
+//{
+//	while (recvFrom(client));
+//}
+
+bool ServerBase::recvAny()
+{
+	Packet packet;
+	Address address;
+	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
+		//This is no good because ip strings aren't unique. Would be interesting to consider passing just the SAI cause that produced seemingly unique strings.
+		//char ipBuffer[INET_ADDRSTRLEN];
+		//inet_ntop(AF_INET, &address.m_sai.sin_addr, ipBuffer, sizeof(ipBuffer))
+		
+		return true;
+	}
+	return false;
+}
+
+//This is valid but I can't while this because there's currently no incoming/outgoing separation. Have to send upon receive.
+//void ServerBase::recvAll()
+//{
+//	while (recvAny());
+//}
+
+//void ServerBase::sendTo(const Packet& packet, const Client& client, int flags)
+//{
+//	client.sendTo(m_socket, packet, flags);
+//}
+
+//I guess this would send all this client's outgoing packets?
+//void ServerBase::sendAllTo(const Client& client, int flags)
+//{
+//	for (const Packet& packet : client.m_outgoing)
+//		sendTo(packet, client, flags);
+//}
+
+void ServerBase::initialize()
+{
+	Network::initialize();
 	m_socket = createSocket();
 	m_address = createAddress(true, "");
 	bindSocket(m_socket, m_address);
@@ -17,141 +190,5 @@ void ServerBase::shutdown()
 {
 	destroySocket(m_socket);
 	freeaddrinfo(m_address);
-	shutdown();
+	Network::shutdown();
 }
-
-void ServerBase::reroute(const Packet& packet, const ClientDesc& exemptClient, int flags)
-{
-	for (ClientDesc& client : m_clients) {
-		if(exemptClient == client)
-			continue;
-		send(packet, client, flags);
-	}
-}
-
-void ServerBase::broadcast(const Packet& packet, int flags)
-{
-	for (ClientDesc& client : m_clients) {
-		send(packet, client, flags);
-	}
-}
-
-void ServerBase::send(const Packet& packet, const ClientDesc& client, int flags)
-{
-	sendto(m_socket, packet.signedBytes(), packet.size(), flags, reinterpret_cast<const SOCKADDR*>(&client.m_address), client.m_addressLength);
-}
-
-/*void Server::connect()
-{
-	printf("Listening. . .\n");
-	m_state.store(State::CONNECT);
-	while (m_state.load() == State::CONNECT) {
-		SOCKADDR_IN fromAddress;
-		memset(&fromAddress, 0, sizeof(fromAddress));
-		int fromAddressLength = sizeof(fromAddress);
-
-		char packet[PACKET_LENGTH];
-		memset(packet, 0, PACKET_LENGTH);
-
-		if (recvfrom(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, &fromAddressLength) != SOCKET_ERROR) {
-			//Connectivity packet to filter out unwanted trafic.
-			if (strcmp(packet, "CONNECTION\n") == 0) {
-				//Add the address if we have no clients, otherwise only add unique addresses (this sucks without maps).
-				if (m_clientAddresses.empty()) {
-					m_clientAddresses.push_back(fromAddress);
-					char ipbuf[INET_ADDRSTRLEN];
-					printf("%s connected.\n", inet_ntop(AF_INET, &fromAddress, ipbuf, sizeof(ipbuf)));
-				}
-				else {
-					bool found = false;
-					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-						found |= compareAddresses(fromAddress, m_clientAddresses[i]);
-					}
-					if (!found)
-					{
-						m_clientAddresses.push_back(fromAddress);
-						char ipbuf[INET_ADDRSTRLEN];
-						printf("%s connected.\n", inet_ntop(AF_INET, &fromAddress, ipbuf, sizeof(ipbuf)));
-					}
-				}
-
-				//Send connection packet back to client repeatedly in case it gets lost.
-				sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, fromAddressLength);
-
-				//Auto-start once we have 2+ clients. See commented code below for manual start implementation.
-				if (m_clientAddresses.size() >= 2) {
-					strcpy(packet, "START\n");
-					for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-						sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
-					}
-					m_state = State::RUN;
-					//run();
-				}
-				//\n is part of START because the input code appends \n.
-				//if (strcmp(packet, "START\n") == 0) {
-				//	//Send the message back to the clients so they know to start.
-				//	for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-				//		sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
-				//	}
-				//	run();
-				//}
-			}
-		}
-	}
-}
-
-//1. Determine which client a message came from.
-//2. Send that message to any client but the sender.
-//3. Profit.
-void Server::run()
-{
-	printf("Transmitting. . .\n");
-	while (m_state == State::RUN) {
-		SOCKADDR_IN fromAddress;
-		memset(&fromAddress, 0, sizeof(fromAddress));
-		int fromAddressLength = sizeof(fromAddress);
-
-		char packet[PACKET_LENGTH];
-		memset(packet, 0, PACKET_LENGTH);
-
-		//Consider coming up with a condition to implicity shutdown ie m_clientAddresses.empty(); -> server broadcasts quit and shuts itself down.
-		if (recvfrom(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&fromAddress, &fromAddressLength) != SOCKET_ERROR) {
-			if (strcmp(packet, "QUIT\n") == 0)
-				shutdown();
-
-			for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-				if (compareAddresses(fromAddress, m_clientAddresses[i]))
-					continue;
-				sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], fromAddressLength);
-			}
-		}
-	}
-}
-
-void Server::shutdown()
-{
-	char packet[PACKET_LENGTH] = "QUIT\n";
-	for (size_t i = 0; i < m_clientAddresses.size(); i++) {
-		sendto(m_socket, packet, PACKET_LENGTH, 0, (SOCKADDR*)&m_clientAddresses[i], sizeof(m_clientAddresses[i]));
-	}
-	closesocket(m_socket);
-	cleanupWSA();
-}
-
-//Not sure if this is viable because more than one listener will consume packets meant for other listeners.
-//If we were to make a listener exclusively for packets that wouldn't be terrible.
-//We wouldn't be I/O bound regardless, but we might be able to bring clarity to our code by separating I/O from logic.
-void Server::stateListener()
-{
-	while (true) {
-		switch (m_state.load())
-		{
-		case CONNECT:
-			break;
-		case RUN:
-			break;
-		default:
-			break;
-		}
-	}
-}*/

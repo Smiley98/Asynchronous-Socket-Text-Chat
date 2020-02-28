@@ -5,10 +5,23 @@
 
 typedef unsigned char byte;
 enum PacketType : byte {
-	NONE = 0,
+	NONE,
+	GENERIC,
 	CONNECT,
 	DISCONNECT,
 	//Insert game-specific packet types here.
+	ERROR,
+	COUNT
+};
+
+enum PacketMode : byte {
+	NONE,		//Default (remember to assign to anything but this)!
+	ONE_WAY,	//Server doesn't send the packet once received.
+	TWO_WAY,	//Server sends back to sender once received.
+	REROUTE,	//Server sends to everyone but the sender.
+	BROADCAST,	//Server sends to everyone including the sender.
+	SPECIFIC,	//Server sends to a specified list.
+	ERROR,
 	COUNT
 };
 
@@ -27,7 +40,7 @@ class PacketBase
 	friend Client;
 public:
 	PacketBase();
-	PacketBase(PacketType packetType);
+	PacketBase(PacketType packetType, PacketMode packetMode);
 	PacketBase(const std::string& string);
 	//PacketBase(const PacketBase<count>& packet);
 	//PacketBase& operator=(const PacketBase<count>& packet);
@@ -44,7 +57,13 @@ public:
 	PacketType getType() const;
 	void setType(PacketType packetType);
 	std::string typeString() const;
+
+	PacketMode getMode() const;
+	void setMode(PacketMode packetMode);
+	std::string modeString() const;
+
 	static size_t size();
+	static size_t rawSize();
 
 protected:
 	void init();
@@ -55,6 +74,7 @@ private:
 	//Protected accessors can be overwritten if desired.
 	struct Internal {
 		PacketType m_type;
+		PacketMode m_mode;
 		std::array<byte, count> m_raw;
 	} m_internal;
 
@@ -76,7 +96,7 @@ class Packet :
 
 public:
 	Packet() = default;
-	Packet(PacketType packetType);
+	Packet(PacketType packetType, PacketMode packetMode);
 	Packet(const std::string& string);
 	//Packet(const Packet& packet);
 	//Packet& operator=(const Packet& packet);
@@ -89,10 +109,11 @@ PacketBase<count>::PacketBase()
 }
 
 template<size_t count>
-inline PacketBase<count>::PacketBase(PacketType packetType)
+inline PacketBase<count>::PacketBase(PacketType packetType, PacketMode packetMode)
 {
 	init();
 	setType(packetType);
+	setMode(packetMode);
 }
 
 template<size_t count>
@@ -117,7 +138,7 @@ inline PacketBase<count>::PacketBase(const std::string& string)
 
 template<size_t count>
 inline std::string PacketBase<count>::toString() const
-{
+{	//Can't strcpy because the internal array isn't guaranteed to have a null terminator.
 	char cstring[count + 1];
 	memcpy(cstring, m_internal.m_raw.data(), count);
 	cstring[count] = '\0';
@@ -148,14 +169,14 @@ void PacketBase<count>::write(const void* src, size_t size, size_t offset)
 template<size_t count>
 inline PacketType PacketBase<count>::getType() const
 {
-	assert(m_internal.m_type < PacketType::COUNT);
+	assert(m_internal.m_type > PacketType::NONE && m_internal.m_type < PacketType::COUNT);
 	return m_internal.m_type;
 }
 
 template<size_t count>
 inline void PacketBase<count>::setType(PacketType packetType)
 {
-	assert(packetType < PacketType::COUNT);
+	assert(packetType > PacketType::NONE && packetType < PacketType::COUNT);
 	m_internal.m_type = packetType;
 }
 
@@ -163,13 +184,51 @@ template<size_t count>
 inline std::string PacketBase<count>::typeString() const
 {
 	switch (getType())
-	{
-		case PacketType::NONE:
-			return "none";
+	{	//Should never be none.
+		//case PacketType::NONE:
+		//	return "none";
+		case PacketType::GENERIC:
+			return "generic";
 		case PacketType::CONNECT:
 			return "connect";
-		case PacketType::QUIT:
-			return "quit";
+		//case COUNT:
+		//	return "count";
+		default:
+			return "";
+	}
+}
+
+template<size_t count>
+PacketMode PacketBase<count>::getMode() const
+{
+	assert(m_internal.m_mode > PacketMode::NONE && m_internal.m_mode < PacketMode::COUNT);
+	return m_internal.m_mode;
+}
+
+template<size_t count>
+void PacketBase<count>::setMode(PacketMode packetMode)
+{
+	assert(packetMode > PacketMode::NONE && packetMode < PacketMode::COUNT);
+	m_internal.m_mode = packetMode;
+}
+
+template<size_t count>
+std::string PacketBase<count>::modeString() const
+{
+	switch (getMode())
+	{	//Should never be none.
+		//case NONE:
+		//	return "none";
+		case ONE_WAY:
+			return "one way";
+		case REROUTE:
+			return "reroute";
+		case BROADCAST:
+			return "broadcast";
+		case SPECIFIC:
+			return "specific";
+		//case COUNT:
+		//	return "count";
 		default:
 			return "";
 	}
@@ -182,27 +241,33 @@ size_t PacketBase<count>::size()
 }
 
 template<size_t count>
+inline size_t PacketBase<count>::rawSize()
+{
+	return m_internal.m_raw.size();
+}
+
+template<size_t count>
 inline const char* PacketBase<count>::signedBytes() const
 {
-	return reinterpret_cast<const char*>(m_internal.m_raw.data());
+	return reinterpret_cast<const char*>(&m_internal);
 }
 
 template<size_t count>
 inline char* PacketBase<count>::signedBytes()
 {
-	return reinterpret_cast<char*>(m_internal.m_raw.data());
+	return reinterpret_cast<char*>(&m_internal);
 }
 
 template<size_t count>
 inline const byte* PacketBase<count>::bytes() const
 {
-	return m_internal.m_raw.data();
+	return reinterpret_cast<const byte*>(&m_internal);
 }
 
 template<size_t count>
 inline byte* PacketBase<count>::bytes()
 {
-	return m_internal.m_raw.data();
+	return reinterpret_cast<byte*>(&m_internal);
 }
 
 template<size_t count>
@@ -220,7 +285,6 @@ inline std::array<byte, count>& PacketBase<count>::buffer()
 template<size_t count>
 inline void PacketBase<count>::init()
 {
-	static_assert(count > 0);
 	memset(&m_internal, 0, sizeof(Internal));
 }
 

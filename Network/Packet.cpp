@@ -4,8 +4,8 @@
 //{
 //}
 
-Packet::Packet(PacketType packetType) :
-	PacketBase(packetType)
+Packet::Packet(PacketType packetType, PacketMode packetMode) :
+	PacketBase(packetType, packetMode)
 {
 }
 

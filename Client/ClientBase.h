@@ -1,9 +1,6 @@
 #pragma once
 #include "../Network/Network.h"
-#include <concurrent_vector.h>
-#include <vector>
 
-typedef concurrency::concurrent_vector<Packet> PacketBuffer;
 class ClientBase :
 	public Network
 {
@@ -15,6 +12,9 @@ public:
 	PacketBuffer m_outgoing;
 
 protected:
+	//Tries to exchange a packet of the desired type with the server. 
+	bool exchange(PacketType packetType);
+
 	//Tries to send all outgoing packets.
 	void sendAll(int flags = 0, bool clear = true);
 
@@ -27,17 +27,11 @@ protected:
 	//Tries to receive packets from the server.
 	bool recv(int flags = 0, bool add = true);
 
-	//Tries to exchange a packet of the desired type with the server. 
-	bool exchange(PacketType packetType);
-
 	//Initialize Winsock2 and setup a client socket.
 	void initialize();
 
 	//Cleanup Winsock2, client socket, and client address.
 	void shutdown();
-
-	//Returns an array of indices corresponding to packets of type packetType within the specified packet buffer.
-	std::vector<size_t> find(PacketType packetType, const PacketBuffer& packetBuffer);
 
 	//Sidenotes:
 	//1. I don't like how add() copies to out packets, but its allows us to buffer our output for a more elegant program so its necessary.

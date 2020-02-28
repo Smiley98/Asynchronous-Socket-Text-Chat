@@ -3,18 +3,24 @@
 #include <atomic>
 
 enum ServerState : byte {
-	IDLE = 0,
+	IDLE,
+	QUIT,
 	CONNECT,
 	DISCONNECT,
-	ROUTE,
-	QUIT
+	ROUTE
 };
 
 class Server
 	: public ServerBase
 {
 public:
+	void start();
+	bool running();
+	ServerState getState();
+	void setState(ServerState serverState);
 
 private:
+	void run();
 	std::atomic_uchar m_state = ServerState::IDLE;
+	bool m_running = false;
 };

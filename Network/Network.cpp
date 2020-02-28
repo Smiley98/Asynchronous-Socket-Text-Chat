@@ -74,3 +74,13 @@ void Network::bindSocket(SOCKET soc, ADDRINFO* const address)
 		shutdown();
 	}
 }
+
+std::vector<size_t> findPacketOfType(PacketType packetType, const PacketBuffer& packetBuffer)
+{
+	std::vector<size_t> indices;
+	for (size_t i = 0; i < packetBuffer.size(); i++) {
+		if (packetBuffer[i].getType() == packetType)
+			indices.push_back(i);
+	}
+	return indices;
+}

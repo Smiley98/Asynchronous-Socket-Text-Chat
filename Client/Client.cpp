@@ -8,8 +8,8 @@ void Client::start()
 {
 	if (!m_running) {
 		initialize();
-		std::thread(&run, this).detach();
 		m_running = true;
+		std::thread(&Client::run, this).detach();
 	}
 }
 
@@ -53,6 +53,10 @@ void Client::setState(ClientState clientState)
 void Client::run()
 {
 	while (m_running) {
+		//A couple of these states could be achieved manually like connect and disconnect.
+		//However such functionality is something you'd expect out of the box so I've provided it.
+		//(Any addiitonal logic to change client state must be provided externally).
+		//The client is the master, the server is the slave (client decides what happens, server responds. Not vice-versa).
 		switch (getState()) {
 		case IDLE:
 			break;

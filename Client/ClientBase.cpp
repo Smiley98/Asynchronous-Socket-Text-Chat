@@ -4,9 +4,8 @@ bool ClientBase::exchange(PacketType packetType)
 {
 	Packet packet(packetType);
 	send(packet);
-	//Peek rather than consume packets incase we've received a non-packetType packet.
-	if (recv(MSG_PEEK))
-		return find(packetType, m_incoming).size() > 0;
+	if (recv())
+		return findPacketOfType(packetType, m_incoming).size() > 0;
 	return false;
 }
 
@@ -37,16 +36,6 @@ bool ClientBase::recv(int flags, bool add)
 		return true;
 	}
 	return false;
-}
-
-std::vector<size_t> ClientBase::find(PacketType packetType, const PacketBuffer& packetBuffer)
-{
-	std::vector<size_t> indices;
-	for (size_t i = 0; i < packetBuffer.size(); i++) {
-		if (packetBuffer[i].getType() == packetType)
-			indices.push_back(i);
-	}
-	return indices;
 }
 
 void ClientBase::initialize()
