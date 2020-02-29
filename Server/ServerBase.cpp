@@ -3,7 +3,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #include "../Common/Timer.h"
 #include <cstdio>
-#define TIMEOUT 5000.0
+#define TIMEOUT 2000.0
 #define LOGGING true
 
 void ServerBase::process(Packet& packet)
@@ -84,9 +84,12 @@ void ServerBase::refresh()
 {
 	static Timer timer;
 	if (timer.elapsed() >= TIMEOUT) {
-		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
-			if (itr->second.m_active)
+		auto itr = m_clients.begin();
+		while (itr != m_clients.end()) {
+			if (itr->second.m_active) {
 				itr->second.m_active = false;
+				itr++;
+			}
 			else
 				itr = m_clients.erase(itr);
 		}
