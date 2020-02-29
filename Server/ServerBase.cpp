@@ -7,20 +7,20 @@ void ServerBase::process(Packet& packet)
 {
 	switch (packet.getType())
 	{
-	case GENERIC:
+	case PacketType::GENERIC:
 		break;
-	case CONNECT:
+	case PacketType::CONNECT:
 		break;
-	case DISCONNECT:
+	case PacketType::DISCONNECT:
 		break;
-	case LIST_ALL_ACTIVE: {
+	case PacketType::LIST_ALL_ACTIVE: {
 		size_t offset = 0;
 		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
 			packet.write(&itr->first, sizeof(Address), offset);
 			offset += sizeof(Address);
 		}
 	}
-	case STRING:
+	case PacketType::STRING:
 		printf("String packet: %s\n", packet.toString().c_str());
 		break;
 	default:
@@ -40,14 +40,14 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	bool result = false;
 	switch (packet.getMode())
 	{
-	case ONE_WAY:
+	case PacketMode::ONE_WAY:
 		break;
-	case TWO_WAY:
+	case PacketMode::TWO_WAY:
 		result = fromAddress.sendTo(m_socket, packet);
-	case REROUTE:
+	case PacketMode::REROUTE:
 		result = reroute(packet, fromAddress);
 		break;
-	case BROADCAST:
+	case PacketMode::BROADCAST:
 		result = broadcast(packet);
 		break;
 	default:

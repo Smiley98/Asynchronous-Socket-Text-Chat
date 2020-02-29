@@ -30,7 +30,7 @@ public:
 };
   
 class Network abstract {
-public:
+protected:
 	static void initialize();
 	static void shutdown();
 

@@ -4,8 +4,8 @@
 #include <string>
 
 typedef unsigned char byte;
-enum PacketType : byte {
-	NONE,
+enum class PacketType : byte {
+	NONE = 0,
 	GENERIC,
 	CONNECT,
 	DISCONNECT,
@@ -15,8 +15,8 @@ enum PacketType : byte {
 	COUNT
 };
 
-enum PacketMode : byte {
-	NONE,		//Default (remember to assign to anything but this)!
+enum class PacketMode : byte {
+	NONE = 0,
 	ONE_WAY,	//Server doesn't send the packet once received.
 	TWO_WAY,	//Server sends back to sender once received.
 	REROUTE,	//Server sends to everyone but the sender.
@@ -171,14 +171,14 @@ void PacketBase<count>::write(const void* src, size_t size, size_t offset)
 template<size_t count>
 inline PacketType PacketBase<count>::getType() const
 {
-	assert(m_internal.m_type > PacketType::NONE && m_internal.m_type < PacketType::COUNT);
+	assert(m_internal.m_type > PacketType::NONE && m_internal.m_type <= PacketType::COUNT);
 	return m_internal.m_type;
 }
 
 template<size_t count>
 inline void PacketBase<count>::setType(PacketType packetType)
 {
-	assert(packetType > PacketType::NONE && packetType < PacketType::COUNT);
+	assert(packetType > PacketType::NONE && packetType <= PacketType::COUNT);
 	m_internal.m_type = packetType;
 }
 
@@ -186,15 +186,17 @@ template<size_t count>
 inline std::string PacketBase<count>::typeString() const
 {
 	switch (getType())
-	{	//Should never be none.
-		//case PacketType::NONE:
-		//	return "none";
+	{
 		case PacketType::GENERIC:
 			return "generic";
 		case PacketType::CONNECT:
 			return "connect";
-		//case COUNT:
-		//	return "count";
+		case PacketType::DISCONNECT:
+			return "disconnect";
+		case PacketType::LIST_ALL_ACTIVE:
+			return "active list";
+		case PacketType::STRING:
+			return "string";
 		default:
 			return "";
 	}
@@ -203,7 +205,7 @@ inline std::string PacketBase<count>::typeString() const
 template<size_t count>
 PacketMode PacketBase<count>::getMode() const
 {
-	assert(m_internal.m_mode > PacketMode::NONE && m_internal.m_mode < PacketMode::COUNT);
+	assert(m_internal.m_mode > PacketMode::NONE && m_internal.m_mode <= PacketMode::COUNT);
 	return m_internal.m_mode;
 }
 
@@ -218,19 +220,17 @@ template<size_t count>
 std::string PacketBase<count>::modeString() const
 {
 	switch (getMode())
-	{	//Should never be none.
-		//case NONE:
-		//	return "none";
-		case ONE_WAY:
+	{
+		case PacketMode::ONE_WAY:
 			return "one way";
-		case REROUTE:
+		case PacketMode::TWO_WAY:
+			return "two way";
+		case PacketMode::REROUTE:
 			return "reroute";
-		case BROADCAST:
+		case PacketMode::BROADCAST:
 			return "broadcast";
-		case SPECIFIC:
+		case PacketMode::SPECIFIC:
 			return "specific";
-		//case COUNT:
-		//	return "count";
 		default:
 			return "";
 	}
@@ -281,7 +281,7 @@ inline const std::array<byte, count>& PacketBase<count>::buffer() const
 template<size_t count>
 inline std::array<byte, count>& PacketBase<count>::buffer()
 {
-	return m_internal.m_raw
+	return m_internal.m_raw;
 }
 
 template<size_t count>

@@ -1,8 +1,8 @@
 #include "Server.h"
-
+#include <iostream>
 int main() {
 	Server server;
-	server.init();
-	server.listen();
-	return 0;
+	server.start();
+	server.setState(ServerState::ROUTE);
+	return getchar();
 }
