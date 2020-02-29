@@ -4,6 +4,7 @@
 #include "../Common/Timer.h"
 #include <cstdio>
 #define TIMEOUT 5000.0
+#define LOGGING true
 
 void ServerBase::process(Packet& packet)
 {
@@ -70,6 +71,9 @@ bool ServerBase::recv()
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_incoming.push_back({ packet, address });
 		m_clients[address].m_active = true;
+#if LOGGING
+		printf("Server packet string: %s\n", packet.toString().c_str());
+#endif
 		return true;
 	}
 	return false;

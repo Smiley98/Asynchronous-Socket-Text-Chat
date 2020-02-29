@@ -25,27 +25,19 @@ enum class PacketMode : byte {
 	COUNT
 };
 
-//class Network;
 class Address;
 class ClientBase;
 class ServerBase;
-//class Server;
-//class Client;
 template<size_t count>
 class PacketBase
 {
-	//friend Network;
 	friend Address;
 	friend ClientBase;
 	friend ServerBase;
-	//friend Server;
-	//friend Client;
 public:
 	PacketBase();
 	PacketBase(PacketType packetType, PacketMode packetMode);
-	PacketBase(const std::string& string);
-	//PacketBase(const PacketBase<count>& packet);
-	//PacketBase& operator=(const PacketBase<count>& packet);
+	PacketBase(const std::string& string, PacketMode packetMode = PacketMode::ONE_WAY);
 
 	std::string toString() const;
 	void fromString(const std::string& string);
@@ -69,8 +61,6 @@ public:
 
 protected:
 	void init();
-	//Unnecessary because this class is POD so the compiler generated stuff makes deep copies as desired.
-	//void clone(const PacketBase& packet);
 
 private:
 	//Protected accessors can be overwritten if desired.
@@ -92,22 +82,19 @@ private:
 class Packet :
 	public PacketBase<512>
 {
-	//friend Network;
-	//friend Server;
-	//friend Client;
 
 public:
 	Packet() = default;
 	Packet(PacketType packetType, PacketMode packetMode);
-	Packet(const std::string& string);
-	//Packet(const Packet& packet);
-	//Packet& operator=(const Packet& packet);
+	Packet(const std::string& string, PacketMode packetMode = PacketMode::ONE_WAY);
 };
 
 template<size_t count>
 PacketBase<count>::PacketBase()
 {
 	init();
+	setType(PacketType::GENERIC);
+	setMode(PacketMode::ONE_WAY);
 }
 
 template<size_t count>
@@ -119,24 +106,13 @@ inline PacketBase<count>::PacketBase(PacketType packetType, PacketMode packetMod
 }
 
 template<size_t count>
-inline PacketBase<count>::PacketBase(const std::string& string)
+inline PacketBase<count>::PacketBase(const std::string& string, PacketMode packetMode)
 {
 	init();
+	setType(PacketType::STRING);
+	setMode(packetMode);
 	fromString(string);
 }
-
-//template<size_t count>
-//PacketBase<count>::PacketBase(const PacketBase<count>& packet)
-//{
-//	clone(packet);
-//}
-//
-//template<size_t count>
-//PacketBase<count>& PacketBase<count>::operator=(const PacketBase<count>& packet)
-//{
-//	clone(packet);
-//	return *this;
-//}
 
 template<size_t count>
 inline std::string PacketBase<count>::toString() const
@@ -289,9 +265,3 @@ inline void PacketBase<count>::init()
 {
 	memset(&m_internal, 0, sizeof(Internal));
 }
-
-//template<size_t count>
-//inline void PacketBase<count>::clone(const PacketBase<count>& packet)
-//{
-//	memcpy(&m_internal, &packet.m_internal, sizeof(Internal));
-//}

@@ -1,5 +1,6 @@
 #include "ClientBase.h"
 #include <mutex>
+#define LOGGING true
 
 void ClientBase::copyIncoming(PacketBuffer& incoming, bool clear)
 {
@@ -48,6 +49,9 @@ void ClientBase::recvAll(int flags, bool add)
 
 bool ClientBase::send(const Packet& packet, int flags/*bool remove*/)//No need to search through outgoing when we can just pass in the desired packet.
 {
+	//printf("Packet: %s\n", packet.toString().c_str());		//Works
+	//printf("%s\n", packet.typeString().c_str());				//Works
+	//printf("Packet data: %s\n", packet.signedBytes() + 2);	//Works
 	return sendto(m_socket, packet.signedBytes(), packet.size(), flags, m_address->ai_addr, m_address->ai_addrlen) != SOCKET_ERROR;
 }
 
@@ -57,6 +61,9 @@ bool ClientBase::recv(int flags, bool add)
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), flags, NULL, NULL) != SOCKET_ERROR) {
 		if (add)
 			m_incoming.push_back(packet);
+#if LOGGING
+		printf("Client packet string: %s\n", packet.toString().c_str());
+#endif
 		return true;
 	}
 	return false;
