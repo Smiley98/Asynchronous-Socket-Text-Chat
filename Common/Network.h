@@ -44,10 +44,6 @@ public:
 	static void bindSocket(SOCKET soc, ADDRINFO* address);
 };
 
-struct AddressHash {
-	ULONG operator()(const Address& key) const;
-};
-
 struct Address {
 	Address();
 	SOCKADDR_IN m_sai;
@@ -56,4 +52,8 @@ struct Address {
 
 	bool sendTo(SOCKET soc, const Packet& packet) const;
 	bool recvFrom(SOCKET soc, Packet& packet);
+};
+
+struct AddressHash {
+	ULONG operator()(const Address& key) const;
 };

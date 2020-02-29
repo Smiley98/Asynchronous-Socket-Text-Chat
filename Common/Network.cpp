@@ -97,7 +97,8 @@ ULONG AddressHash::operator()(const Address& key) const
 
 Address::Address()
 {
-	memset(this, 0, sizeof(Address));
+	memset(&m_sai, 0, sizeof(SOCKADDR_IN));
+	m_length = sizeof(SOCKADDR_IN);
 }
 
 bool Address::operator==(const Address& address) const

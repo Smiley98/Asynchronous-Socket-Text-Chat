@@ -25,15 +25,9 @@ enum class PacketMode : byte {
 	COUNT
 };
 
-class Address;
-class ClientBase;
-class ServerBase;
 template<size_t count>
 class PacketBase
 {
-	friend Address;
-	friend ClientBase;
-	friend ServerBase;
 public:
 	PacketBase();
 	PacketBase(PacketType packetType, PacketMode packetMode);
@@ -59,6 +53,7 @@ public:
 	static size_t size();
 	static size_t rawSize();
 
+	//I would leave these private and give friendship but then I lose auto-complete...
 	const char* signedBytes() const;
 	char* signedBytes();
 	const byte* bytes() const;
