@@ -1,0 +1,33 @@
+*I didn't add this because it would be doing the exact same thing as before just making threads once instead of every frame (not worth decrease legibility)*
+
+Client.h:
+void controller();
+void receiver();
+void sender();
+
+std::thread m_controller;
+std::thread m_receiver;
+std::thread m_sender;
+
+Client start:
+//std::thread(&Client::controller, this).detach();
+//std::thread(&Client::receiver, this).detach();
+//std::thread(&Client::sender, this).detach();
+m_controller = std::thread(&Client::controller, this);
+m_receiver = std::thread(&Client::receiver, this);
+m_sender = std::thread(&Client::sender, this);
+
+Client running:
+void Client::receiver()
+{
+	while (running()) {
+
+	}
+}
+
+void Client::sender()
+{
+	while (running()) {
+
+	}
+}

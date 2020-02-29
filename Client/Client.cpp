@@ -1,15 +1,32 @@
 #include "Client.h"
-#include <thread>
 #include <future>
 #include <cstdio>
 #define CLIENT_LOGGING true
 
+Client::Client()
+{	//Leave it up to the user to start the client's networking thread.
+	initialize();
+}
+
+Client::~Client()
+{	//Make sure to stop if the user hasn't already!
+	stop();
+	shutdown();
+}
+
 void Client::start()
 {
-	if (!m_running) {
-		initialize();
+	if (!running()) {
 		m_running = true;
-		std::thread(&Client::run, this).detach();
+		m_thread = std::thread(&Client::run, this);
+	}
+}
+
+void Client::stop()
+{
+	if (running()) {
+		m_running = false;
+		m_thread.join();
 	}
 }
 
@@ -32,9 +49,6 @@ void Client::setState(ClientState clientState)
 	case IDLE:
 		printf("Idling...\n");
 		break;
-	case QUIT:
-		printf("Quitting.\n");
-		break;
 	case CONNECT:
 		printf("Connecting.\n");
 		break;
@@ -52,17 +66,9 @@ void Client::setState(ClientState clientState)
 
 void Client::run()
 {
-	while (m_running) {
-		//A couple of these states could be achieved manually like connect and disconnect.
-		//However such functionality is something you'd expect out of the box so I've provided it.
-		//(Any addiitonal logic to change client state must be provided externally).
-		//The client is the master, the server is the slave (client decides what happens, server responds. Not vice-versa).
+	while (running()) {
 		switch (getState()) {
 		case IDLE:
-			break;
-		case QUIT:
-			shutdown();
-			m_running = false;
 			break;
 		case CONNECT: {
 			if (exchange(PacketType::CONNECT, PacketMode::TWO_WAY))
@@ -71,7 +77,7 @@ void Client::run()
 		}
 		case DISCONNECT: {
 			if (exchange(PacketType::DISCONNECT, PacketMode::TWO_WAY))
-				setState(QUIT);
+				setState(IDLE);
 			break;
 		}
 		//Sends/receives all incoming/outgoing packets, leaving the client free to enque/deque packets at will!

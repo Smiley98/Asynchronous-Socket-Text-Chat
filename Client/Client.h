@@ -1,10 +1,10 @@
 #pragma once
 #include "ClientBase.h"
 #include <atomic>
+#include <thread>
 
 enum ClientState : byte {
 	IDLE,
-	QUIT,
 	CONNECT,
 	DISCONNECT,
 	CONSUME
@@ -14,13 +14,18 @@ class Client
 	: public ClientBase
 {
 public:
+	Client();
+	~Client();
+
 	void start();
+	void stop();
 	bool running();
 	ClientState getState();
 	void setState(ClientState clientState);
 
 private:
-	void run();
+	std::thread m_thread;
 	std::atomic_uchar m_state = IDLE;
 	bool m_running = false;
+	void run();
 };

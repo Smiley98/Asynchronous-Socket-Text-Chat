@@ -1,5 +1,6 @@
 #include "ServerBase.h"
 #include <iostream>
+#include <thread>
 #undef ERROR //Lol something in windows made this 0 and it messes up my enums xD
 
 bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
@@ -37,77 +38,69 @@ bool Address::recvFrom(SOCKET soc, Packet& packet)
 	return false;
 }
 
-void ServerBase::loop()
+void ServerBase::sendAll()
 {
 }
 
-void ServerBase::send(const Packet& packet, const Address& sender)
+bool ServerBase::send(const Packet& packet, const Address& address)
 {
+	bool result = false;
 	switch (packet.getMode())
 	{
-	case ONE_WAY:
-		handlePacket(packet);
-		break;
-	case TWO_WAY:
-		sender.sendTo(m_socket, packet);
-		handlePacket(packet);
-		break;
 	case REROUTE:
-		reroute(packet, sender);
-		handlePacket(packet);
+		reroute(packet, address);
 		break;
 	case BROADCAST:
 		broadcast(packet);
-		handlePacket(packet);
 		break;
 	case ERROR:
 		printf("Error packet received!\n");
 		printf("Error packet contents: %s", packet.toString().c_str());
 		break;
 	default:
+		result = address.sendTo(m_socket, packet);
 		break;
 	}
+	return result;
 }
 
-void ServerBase::handlePacket(const Packet& packet)
+bool ServerBase::broadcast(const Packet& packet)
 {
-	switch (packet.getType())
-	{
-	case GENERIC:
-		break;
-	case CONNECT:
-		break;
-	case DISCONNECT:
-		break;
-	case ERROR:
-		break;
-	default:
-		break;
-	}
-}
-
-void ServerBase::broadcast(const Packet& packet)
-{
+	//if (!m_transfering.load())
+	//	return;
+	bool result = true;
 	for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++)
-		itr->sendTo(m_socket, packet);
+		result &= itr->sendTo(m_socket, packet);
+	return result;
 }
 
-void ServerBase::reroute(const Packet& packet, const Address& exemptClient)
+bool ServerBase::reroute(const Packet& packet, const Address& exemptClient)
 {
+	//if (!m_transfering.load())
+	//	return;
+	bool result = true;
 	for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
 		if(*itr == exemptClient)
 			continue;
-		itr->sendTo(m_socket, packet);
+		result &= itr->sendTo(m_socket, packet);
 	}
+	return result;
+}
+
+void ServerBase::recvAll()
+{
+	while (recv());
 }
 
 bool ServerBase::recv()
 {
+	//if (!m_transfering.load())
+	//	return false;
 	Packet packet;
 	Address address;
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_clients.insert(address);
-		m_packets.push_back({ packet, address });
+		m_incoming.push_back({ packet, address });
 		return true;
 	}
 	return false;

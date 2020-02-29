@@ -1,7 +1,8 @@
 #pragma once
 #include "../Network/Network.h"
-#include <concurrent_vector.h>
 #include <unordered_set>
+#include <mutex>
+#include <atomic>
 
 struct Address {
 	Address();
@@ -19,29 +20,29 @@ struct AddressHash {
 
 struct RoutedPacket {
 	Packet m_packet;
-	Address m_address;
+	Address m_fromAddress;//Sender
+	//If we wanted to support multicasting, I guess we'd partition the packet such that the desired recipients are included via hole punching.
 };
+typedef std::vector<RoutedPacket> RoutedPacketBuffer;
 
 //Note: this server has no "receive" functionality. Its meant as a middle-man between clients, so all it does is re-route.
 class ServerBase :
 	public Network
 {
 protected:
-	//
-	void loop();
+	void sendAll();
+	bool send(const Packet& packet, const Address& address);
 
-	//
-	void send(const Packet& packet, const Address& sender);
-
-	//Writes the contents of the received packet to the corresponding client, appends if the host data doesn't match an existing client.
+	//These don't do anything special. There's no special behaviour on receive. Send however is a different story.
+	void recvAll();
 	bool recv();
 
 //High level functions.
 	//Send the packet to every client except for the passed in client (which is usually the original sender).
-	void reroute(const Packet& packet, const Address& exemptAddress);
+	bool reroute(const Packet& packet, const Address& exemptAddress);
 
 	//Send packet to all clients.
-	void broadcast(const Packet& packet);
+	bool broadcast(const Packet& packet);
 
 //Begin/end functions.
 	//Initialize Winsock2 and setup a server socket.
@@ -51,12 +52,14 @@ protected:
 	void shutdown();
 
 private:
-	//No differentiation between incoming and outgoing because recevied packets are immediately sent rather than explicitly forming an outgoing buffer.
-	//We can actually accelerate this by constantly receiving and swapping at regular intervals.
-	concurrency::concurrent_vector<RoutedPacket> m_packets;
+	RoutedPacketBuffer m_incoming;
+	RoutedPacketBuffer m_outgoing;
+	//std::mutex m_incomingMutex;
+	//std::mutex m_outgoingMutex;
+	//Might not need mutexes.
+	std::atomic_bool m_transfering;
+
 	std::unordered_set<Address, AddressHash> m_clients;
 	ADDRINFO* m_address = NULL;
 	SOCKET m_socket = INVALID_SOCKET;
-
-	void handlePacket(const Packet& packet);
 };
