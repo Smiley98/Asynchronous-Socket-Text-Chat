@@ -12,14 +12,16 @@ int main() {
 	SOCKET soc = Network::createSocket();
 	ADDRINFO* address = Network::createAddress(true, "");
 	Network::bindSocket(soc, address);
-	char data[64];
 
-	//SOCKADDR_IN fromAddress;
-	//int fromLength = sizeof(fromAddress);
+	SOCKADDR_IN fromAddress;
+	int fromLength = sizeof(fromAddress);
 
+	Packet packet;
+	size_t counter = 0;
 	while (true) {
-		if (recvfrom(soc, data, sizeof(data), 0, NULL, NULL) != SOCKET_ERROR) {
-			printf("Received: %s\n", data);
+		if (recvfrom(soc, packet.signedBytes(), packet.size(), 0, (SOCKADDR*)&fromAddress, &fromLength) != SOCKET_ERROR) {
+			printf("Server received%zu: %s\n", ++counter, packet.signedBytes());
+			sendto(soc, packet.signedBytes(), packet.size(), 0, (SOCKADDR*)&fromAddress, fromLength);
 		}
 	}
 

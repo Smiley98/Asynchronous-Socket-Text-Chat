@@ -59,6 +59,13 @@ public:
 	static size_t size();
 	static size_t rawSize();
 
+	const char* signedBytes() const;
+	char* signedBytes();
+	const byte* bytes() const;
+	byte* bytes();
+	const std::array<byte, count>& buffer() const;
+	std::array<byte, count>& buffer();
+
 protected:
 	void init();
 
@@ -69,13 +76,6 @@ private:
 		PacketMode m_mode;
 		std::array<byte, count> m_raw;
 	} m_internal;
-
-	const char* signedBytes() const;
-	char* signedBytes();
-	const byte* bytes() const;
-	byte* bytes();
-	const std::array<byte, count>& buffer() const;
-	std::array<byte, count>& buffer();
 };
 
 //Constraining all sockets to sending packets containing raw data only of size 512.

@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "Client.h"
+#include "../Common/Timer.h"
 #include <iostream>
 #include <string>
 #include <WinSock2.h>
@@ -13,13 +14,21 @@ int main() {
 	Network::initialize();
 	SOCKET soc = Network::createSocket();
 	ADDRINFO* address = Network::createAddress();
-	char data[64];
+	Packet packet;
 	const char* msg = "lit!";
-	strcpy(data, msg);
+	strcpy(packet.signedBytes(), msg);
 
+	Timer timer;
+	size_t counter = 0;
 	while (true) {
-		sendto(soc, data, sizeof(data), 0, address->ai_addr, address->ai_addrlen);
-		//Don't worry about receiving yet.
+		if (timer.elapsed() >= 1000.0) {
+			sendto(soc, packet.signedBytes(), packet.size(), 0, address->ai_addr, address->ai_addrlen);
+			timer.restart();
+		}
+
+		if (recvfrom(soc, packet.signedBytes(), packet.size(), 0, NULL, NULL) != SOCKET_ERROR) {
+			printf("Client received%zu: %s\n", ++counter, packet.signedBytes());
+		}
 	}
 
 	/*while (true) {

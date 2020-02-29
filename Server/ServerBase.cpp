@@ -82,7 +82,7 @@ bool ServerBase::recv()
 void ServerBase::refresh()
 {
 	static Timer timer;
-	if (fmod(timer.elapsed(), TIMEOUT) == 0.0) {
+	if (timer.elapsed() >= TIMEOUT) {
 		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
 			if (itr->second.m_active)
 				itr->second.m_active = false;
