@@ -10,8 +10,8 @@ enum PacketType : byte {
 	CONNECT,
 	DISCONNECT,
 	LIST_ALL_ACTIVE,
+	STRING,
 	//Insert game-specific packet types here.
-	ERROR,
 	COUNT
 };
 
@@ -22,7 +22,6 @@ enum PacketMode : byte {
 	REROUTE,	//Server sends to everyone but the sender.
 	BROADCAST,	//Server sends to everyone including the sender.
 	SPECIFIC,	//Server sends to a specified list.
-	ERROR,
 	COUNT
 };
 
@@ -164,7 +163,7 @@ inline void PacketBase<count>::read(void* dst, size_t size, size_t offset) const
 
 template<size_t count>
 void PacketBase<count>::write(const void* src, size_t size, size_t offset)
-{
+{	//Consider implementing a mechanism to store the index of free data.
 	assert(size + offset <= count);
 	memcpy(m_internal.m_raw.data() + offset, src, size);
 }

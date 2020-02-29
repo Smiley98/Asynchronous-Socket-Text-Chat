@@ -84,3 +84,38 @@ std::vector<size_t> findPacketOfType(PacketType packetType, const PacketBuffer& 
 	}
 	return indices;
 }
+
+bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
+{
+	return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
+}
+
+ULONG AddressHash::operator()(const Address& key) const
+{
+	return key.m_sai.sin_addr.s_addr ^ key.m_sai.sin_port;
+}
+
+Address::Address()
+{
+	memset(this, 0, sizeof(Address));
+}
+
+bool Address::operator==(const Address& address) const
+{
+	return compareAddresses(m_sai, address.m_sai);
+}
+
+bool Address::sendTo(SOCKET soc, const Packet& packet) const
+{
+	return sendto(soc, packet.signedBytes(), packet.size(), 0, reinterpret_cast<const SOCKADDR*>(&m_sai), m_length) != SOCKET_ERROR;
+}
+
+bool Address::recvFrom(SOCKET soc, Packet& packet)
+{
+	Address address;
+	if (recvfrom(soc, nullptr, 0, MSG_PEEK, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
+		if (address == *this)
+			return recvfrom(soc, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&m_sai), &m_length) != SOCKET_ERROR;
+	}
+	return false;
+}

@@ -42,3 +42,17 @@ public:
 
 	static void bindSocket(SOCKET soc, ADDRINFO* const address);
 };
+
+struct AddressHash {
+	ULONG operator()(const Address& key) const;
+};
+
+struct Address {
+	Address();
+	SOCKADDR_IN m_sai;
+	int m_length;
+	bool operator==(const Address& address) const;
+
+	bool sendTo(SOCKET soc, const Packet& packet) const;
+	bool recvFrom(SOCKET soc, Packet& packet);
+};
