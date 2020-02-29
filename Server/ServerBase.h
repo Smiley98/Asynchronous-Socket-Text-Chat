@@ -54,7 +54,8 @@ protected:
 	//Cleanup Winsock2, server socket, and server address.
 	void shutdown();
 
-private:
+//private:
+public:
 	//Would be faster as an unordered_set, but I would have to rewrite stuff (ClientInfo would own an Address).
 	std::unordered_map<Address, ClientInfo, AddressHash> m_clients;
 

@@ -68,6 +68,7 @@ bool ServerBase::recv()
 {
 	Packet packet;
 	Address address;
+	//Most likely a parallelism error. Make everything sequential and see what happens.
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_incoming.push_back({ packet, address });
 		m_clients[address].m_active = true;
