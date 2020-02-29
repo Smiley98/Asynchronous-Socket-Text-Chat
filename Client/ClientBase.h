@@ -1,5 +1,5 @@
 #pragma once
-#include "../Network/Network.h"
+#include "../Common/Network.h"
 #include <mutex>
 
 class ClientBase :

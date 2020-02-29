@@ -1,4 +1,6 @@
 #include "ServerBase.h"
+//We call recvfrom() here so we need to re-link Winsock2.
+#pragma comment(lib, "Ws2_32.lib")
 #include "../Network/Timer.h"
 #include <cstdio>
 #define TIMEOUT 5000.0

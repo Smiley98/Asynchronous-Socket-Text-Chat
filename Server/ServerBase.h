@@ -1,5 +1,5 @@
 #pragma once
-#include "../Network/Network.h"
+#include "../Common/Network.h"
 #include <unordered_map>
 
 struct RoutedPacket {
