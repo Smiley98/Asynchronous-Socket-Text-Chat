@@ -5,9 +5,6 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 int main() {
-	/*Server server;
-	server.start();
-	server.setState(ServerState::ROUTE);*/
 	Network::initialize();
 	SOCKET soc = Network::createSocket();
 	ADDRINFO* address = Network::createAddress(true, "");
@@ -25,12 +22,11 @@ int main() {
 		}
 	}
 
-	/*while (true) {
-		std::string input;
-		std::getline(std::cin, input);
-		Packet packet(input);
-		client.addOutgoing(packet);
-	}*/
+	/*
+	Server server;
+	server.start();
+	server.setState(ServerState::ROUTE);
+	*/
 
 	return getchar();
 }

@@ -47,11 +47,8 @@ void ClientBase::recvAll(int flags, bool add)
 	m_incomingMutex.unlock();
 }
 
-bool ClientBase::send(const Packet& packet, int flags/*bool remove*/)//No need to search through outgoing when we can just pass in the desired packet.
+bool ClientBase::send(const Packet& packet, int flags)
 {
-	//printf("Packet: %s\n", packet.toString().c_str());		//Works
-	//printf("%s\n", packet.typeString().c_str());				//Works
-	//printf("Packet data: %s\n", packet.signedBytes() + 2);	//Works
 	return sendto(m_socket, packet.signedBytes(), packet.size(), flags, m_address->ai_addr, m_address->ai_addrlen) != SOCKET_ERROR;
 }
 

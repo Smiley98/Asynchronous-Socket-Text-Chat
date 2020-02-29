@@ -7,11 +7,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 int main() {
-	/*Client client;
-	client.start();
-	client.setState(ClientState::CONSUME);*/
-
-	Network::initialize();
+	/*Network::initialize();
 	SOCKET soc = Network::createSocket();
 	ADDRINFO* address = Network::createAddress();
 	Packet packet;
@@ -29,14 +25,18 @@ int main() {
 		if (recvfrom(soc, packet.signedBytes(), packet.size(), 0, NULL, NULL) != SOCKET_ERROR) {
 			printf("Client received%zu: %s\n", ++counter, packet.signedBytes());
 		}
-	}
+	}*/
 
-	/*while (true) {
+	Client client;
+	client.start();
+	client.setState(ClientState::CONSUME);
+
+	while (true) {
 		std::string input;
 		std::getline(std::cin, input);
-		Packet packet(input);
+		Packet packet(input, PacketMode::TWO_WAY);
 		client.addOutgoing(packet);
-	}*/
+	}
 
 	return getchar();
 }
