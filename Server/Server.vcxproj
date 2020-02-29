@@ -138,6 +138,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\Network.cpp" />
+    <ClCompile Include="..\Common\Packet.cpp" />
+    <ClCompile Include="..\Common\Timer.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Server.cpp" />
+    <ClCompile Include="ServerBase.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Common\Network.h" />
+    <ClInclude Include="..\Common\Packet.h" />
+    <ClInclude Include="..\Common\Timer.h" />
+    <ClInclude Include="Server.h" />
+    <ClInclude Include="ServerBase.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
