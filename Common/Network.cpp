@@ -65,7 +65,7 @@ void Network::destroyAddress(ADDRINFO* const address)
 	freeaddrinfo(address);
 }
 
-void Network::bindSocket(SOCKET soc, ADDRINFO* const address)
+void Network::bindSocket(SOCKET soc, ADDRINFO* address)
 {
 	if (bind(soc, address->ai_addr, static_cast<int>(address->ai_addrlen)) == SOCKET_ERROR) {
 		printf("Bind failed (%i).\n", WSAGetLastError());

@@ -30,7 +30,8 @@ public:
 };
   
 class Network abstract {
-protected:
+public:
+//protected:
 	static void initialize();
 	static void shutdown();
 
@@ -40,7 +41,7 @@ protected:
 	static ADDRINFO* const createAddress(bool bind = false, const std::string& host = "localhost", const std::string& port = "6969");
 	static void destroyAddress(ADDRINFO* const address);
 
-	static void bindSocket(SOCKET soc, ADDRINFO* const address);
+	static void bindSocket(SOCKET soc, ADDRINFO* address);
 };
 
 struct AddressHash {
