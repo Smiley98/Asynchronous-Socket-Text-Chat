@@ -1,7 +1,9 @@
 #include "ServerBase.h"
 #include <iostream>
 #include <thread>
+#include "../Network/Timer.h"
 #undef ERROR //Lol something in windows made this 0 and it messes up my enums xD
+#define TIMEOUT 5000.0
 
 bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
 {
@@ -38,29 +40,73 @@ bool Address::recvFrom(SOCKET soc, Packet& packet)
 	return false;
 }
 
-void ServerBase::sendAll()
+void ServerBase::refresh()
 {
+	static Timer timer;
+	if (fmod(timer.elapsed(), TIMEOUT) == 0.0) {
+		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
+			ClientInfo& clientInfo = m_info[*itr];
+			if (clientInfo.m_active.load())
+				clientInfo.m_active.store(false);
+			else {
+				itr = m_clients.erase(itr);
+				m_info.erase(*itr);
+			}
+		}
+		timer.restart();
+	}
 }
 
-bool ServerBase::send(const Packet& packet, const Address& address)
+void ServerBase::handle(const Packet& packet)
+{
+	switch (packet.getType())
+	{
+	case GENERIC:
+		break;
+	case CONNECT:
+		break;
+	case DISCONNECT:
+		break;
+	case LIST_ALL_ACTIVE:
+
+	case ERROR:
+		break;
+	default:
+		break;
+	}
+}
+
+void ServerBase::sendAll()
+{
+	for (const RoutedPacket& routedPacket : m_outgoing)
+		send(routedPacket.m_packet, routedPacket.m_fromAddress);
+}
+
+bool ServerBase::send(const Packet& packet, const Address& fromAddress)
 {
 	bool result = false;
 	switch (packet.getMode())
 	{
+	case ONE_WAY:
+		break;
+	case TWO_WAY:
+		result = fromAddress.sendTo(m_socket, packet);
 	case REROUTE:
-		reroute(packet, address);
+		result = reroute(packet, fromAddress);
 		break;
 	case BROADCAST:
-		broadcast(packet);
+		result = broadcast(packet);
 		break;
 	case ERROR:
 		printf("Error packet received!\n");
 		printf("Error packet contents: %s", packet.toString().c_str());
 		break;
 	default:
-		result = address.sendTo(m_socket, packet);
 		break;
 	}
+	//Handle the packet and return the result no matter what.
+	//PacketMode decides how to send pack the received packet. PacketType decides if we switch states.
+	handle(packet);
 	return result;
 }
 
@@ -101,6 +147,7 @@ bool ServerBase::recv()
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_clients.insert(address);
 		m_incoming.push_back({ packet, address });
+		m_info[address].m_active.store(true);
 		return true;
 	}
 	return false;

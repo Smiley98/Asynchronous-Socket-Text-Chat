@@ -9,6 +9,7 @@ enum PacketType : byte {
 	GENERIC,
 	CONNECT,
 	DISCONNECT,
+	LIST_ALL_ACTIVE,
 	//Insert game-specific packet types here.
 	ERROR,
 	COUNT

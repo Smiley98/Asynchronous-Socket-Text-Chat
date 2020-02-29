@@ -1,6 +1,7 @@
 #pragma once
 #include "../Network/Network.h"
 #include <unordered_set>
+#include <unordered_map>
 #include <mutex>
 #include <atomic>
 
@@ -25,13 +26,26 @@ struct RoutedPacket {
 };
 typedef std::vector<RoutedPacket> RoutedPacketBuffer;
 
+struct ClientInfo {
+	//Clients have 1000ms to ping the server otherwise they get disconnected.
+	//double m_lastUpdated = 1000.0;
+	std::atomic_bool m_active;
+};
+
 //Note: this server has no "receive" functionality. Its meant as a middle-man between clients, so all it does is re-route.
 class ServerBase :
 	public Network
 {
 protected:
+	//Disconnect clients if they are inactive.
+	void refresh();
+
+	void handle(const Packet& packet);
+
+	//Send till there's no more outgoing packets.
 	void sendAll();
-	bool send(const Packet& packet, const Address& address);
+	//Don't be deceived. Despite passing in the sender's address, we're not guaranteed to send back to it.
+	bool send(const Packet& packet, const Address& fromAddress);
 
 	//These don't do anything special. There's no special behaviour on receive. Send however is a different story.
 	void recvAll();
@@ -58,8 +72,9 @@ private:
 	//std::mutex m_outgoingMutex;
 	//Might not need mutexes.
 	std::atomic_bool m_transfering;
-
 	std::unordered_set<Address, AddressHash> m_clients;
+	//I made this map because I don't wanna lift my Address structure into a Client structure (otherwise I need to modify my send/recv code).
+	std::unordered_map<Address, ClientInfo, AddressHash> m_info;
 	ADDRINFO* m_address = NULL;
 	SOCKET m_socket = INVALID_SOCKET;
 };
