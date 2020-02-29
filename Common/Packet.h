@@ -21,7 +21,7 @@ enum class PacketMode : byte {
 	TWO_WAY,	//Server sends back to sender once received.
 	REROUTE,	//Server sends to everyone but the sender.
 	BROADCAST,	//Server sends to everyone including the sender.
-	SPECIFIC,	//Server sends to a specified list.
+	MULTICAST,	//Server sends to a specified list.
 	COUNT
 };
 
@@ -50,8 +50,9 @@ public:
 	void setMode(PacketMode packetMode);
 	std::string modeString() const;
 
-	static size_t size();
-	static size_t rawSize();
+	static constexpr size_t size();
+	static constexpr size_t bufferSize();
+	static constexpr size_t metadata();
 
 	//I would leave these private and give friendship but then I lose auto-complete...
 	const char* signedBytes() const;
@@ -69,7 +70,7 @@ private:
 	struct Internal {
 		PacketType m_type;
 		PacketMode m_mode;
-		std::array<byte, count> m_raw;
+		std::array<byte, count> m_buffer;
 	} m_internal;
 };
 
@@ -113,7 +114,7 @@ template<size_t count>
 inline std::string PacketBase<count>::toString() const
 {	//Can't strcpy because the internal array isn't guaranteed to have a null terminator.
 	char cstring[count + 1];
-	memcpy(cstring, m_internal.m_raw.data(), count);
+	memcpy(cstring, m_internal.m_buffer.data(), count);
 	cstring[count] = '\0';
 	return std::string(cstring);
 }
@@ -122,21 +123,21 @@ template<size_t count>
 inline void PacketBase<count>::fromString(const std::string& string)
 {
 	assert(string.size() <= count);
-	string.copy(reinterpret_cast<char* const>(m_internal.m_raw.data()), string.size());
+	string.copy(reinterpret_cast<char* const>(m_internal.m_buffer.data()), string.size());
 }
 
 template<size_t count>
 inline void PacketBase<count>::read(void* dst, size_t size, size_t offset) const
 {
 	assert(size + offset <= count);
-	memcpy(dst, m_internal.m_raw.data() + offset, size);
+	memcpy(dst, m_internal.m_buffer.data() + offset, size);
 }
 
 template<size_t count>
 void PacketBase<count>::write(const void* src, size_t size, size_t offset)
 {	//Consider implementing a mechanism to store the index of free data.
 	assert(size + offset <= count);
-	memcpy(m_internal.m_raw.data() + offset, src, size);
+	memcpy(m_internal.m_buffer.data() + offset, src, size);
 }
 
 template<size_t count>
@@ -208,15 +209,21 @@ std::string PacketBase<count>::modeString() const
 }
 
 template<size_t count>
-size_t PacketBase<count>::size()
+size_t constexpr PacketBase<count>::size()
 {
 	return sizeof(Internal);
 }
 
 template<size_t count>
-inline size_t PacketBase<count>::rawSize()
+size_t constexpr PacketBase<count>::bufferSize()
+{	//(Same as returning <count>).
+	return count;//m_internal.m_buffer.size();
+}
+
+template<size_t count>
+size_t constexpr PacketBase<count>::metadata()
 {
-	return m_internal.m_raw.size();
+	return size() - bufferSize();
 }
 
 template<size_t count>
@@ -246,13 +253,13 @@ inline byte* PacketBase<count>::bytes()
 template<size_t count>
 inline const std::array<byte, count>& PacketBase<count>::buffer() const
 {
-	return m_internal.m_raw;
+	return m_internal.m_buffer;
 }
 
 template<size_t count>
 inline std::array<byte, count>& PacketBase<count>::buffer()
 {
-	return m_internal.m_raw;
+	return m_internal.m_buffer;
 }
 
 template<size_t count>

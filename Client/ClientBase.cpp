@@ -1,6 +1,6 @@
 #include "ClientBase.h"
 #include <mutex>
-#define LOGGING true
+#define LOGGING false
 
 void ClientBase::copyIncoming(PacketBuffer& incoming, bool clear)
 {

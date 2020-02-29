@@ -4,25 +4,12 @@
 #include "../Common/Timer.h"
 #include <cstdio>
 #define TIMEOUT 2000.0
-#define LOGGING true
 
 void ServerBase::process(Packet& packet)
 {
+	//Packet types turned out to be kind of useless.
 	switch (packet.getType())
 	{
-	case PacketType::GENERIC:
-		break;
-	case PacketType::CONNECT:
-		break;
-	case PacketType::DISCONNECT:
-		break;
-	case PacketType::LIST_ALL_ACTIVE: {
-		size_t offset = 0;
-		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
-			packet.write(&itr->first, sizeof(Address), offset);
-			offset += sizeof(Address);
-		}
-	}
 	case PacketType::STRING:
 		printf("String packet: %s\n", packet.toString().c_str());
 		break;
@@ -53,6 +40,9 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	case PacketMode::BROADCAST:
 		result = broadcast(packet);
 		break;
+	case PacketMode::MULTICAST:
+		result = multicast(packet);
+		break;
 	default:
 		break;
 	}
@@ -68,13 +58,9 @@ bool ServerBase::recv()
 {
 	Packet packet;
 	Address address;
-	//Most likely a parallelism error. Make everything sequential and see what happens.
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_incoming.push_back({ packet, address });
 		m_clients[address].m_active = true;
-#if LOGGING
-		printf("Server packet string: %s\n", packet.toString().c_str());
-#endif
 		return true;
 	}
 	return false;
@@ -84,6 +70,8 @@ void ServerBase::refresh()
 {
 	static Timer timer;
 	if (timer.elapsed() >= TIMEOUT) {
+		timer.restart();
+		//1. Disconnect any inactive clients.
 		auto itr = m_clients.begin();
 		while (itr != m_clients.end()) {
 			if (itr->second.m_active) {
@@ -93,7 +81,14 @@ void ServerBase::refresh()
 			else
 				itr = m_clients.erase(itr);
 		}
-		timer.restart();
+		//2. Broadcast a list of active clients (clients are responsible from removing themselves from this list).
+		Packet packet(PacketType::LIST_ALL_ACTIVE, PacketMode::ONE_WAY);
+		size_t offset = 0;
+		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
+			packet.write(&itr->first, sizeof(Address), offset);
+			offset += sizeof(Address);
+		}
+		broadcast(packet);
 	}
 }
 
@@ -109,6 +104,32 @@ bool ServerBase::broadcast(const Packet& packet)
 	for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++)
 		result &= itr->first.sendTo(m_socket, packet);
 	return result;
+}
+
+bool ServerBase::multicast(const Packet& packet)
+{
+	//Read the number of addresses.
+	const size_t addressCount = packet.buffer()[0];
+	//+1 because we're reserving the first byte of the buffer for the address count.
+	const size_t addressMemoryLength = 1 + addressCount * sizeof(Address);
+	const size_t nonAddressMemoryLength = Packet::bufferSize() - addressMemoryLength;
+
+	//Write the non-address memory of the original packet to the outgoing packet (including metadata).
+	Packet outgoing;
+	packet.read(outgoing.bytes(), nonAddressMemoryLength, addressMemoryLength);
+
+	//Point to the start of the address information.
+	const Address* address = reinterpret_cast<const Address*>(packet.buffer().data() + 1);
+
+	bool result = true;
+	//Despite address being const, we're changing its memory location so it holds a different value each iteration.
+	for (size_t i = 0; i < addressCount; i++) {
+		result &= address->sendTo(m_socket, outgoing);
+		address += sizeof(Address);
+	}
+	return false;
+	//And that my friends, is how we break our brain using pointer arithmetic and no dynamic allocation.
+	//In a perfect world, I would derive from my NetworkObject class and override the serialize and deserialize methods.
 }
 
 bool ServerBase::reroute(const Packet& packet, const Address& exemptClient)
