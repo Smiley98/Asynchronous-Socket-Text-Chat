@@ -10,6 +10,7 @@ typedef std::vector<RoutedPacket> RoutedPacketBuffer;
 
 struct ClientInfo {
 	bool m_active;
+	ClientStatus m_status;
 };
 
 class ServerBase :

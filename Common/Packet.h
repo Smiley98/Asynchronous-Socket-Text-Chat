@@ -12,6 +12,8 @@ enum class PacketType : byte {
 	LIST_ALL_ACTIVE,
 	STRING,
 	//Insert game-specific packet types here.
+	STATUS_UPDATE,
+	//End game-specific labels.
 	COUNT
 };
 

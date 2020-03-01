@@ -131,9 +131,21 @@ void Address::print() const
 	printf("Ip address: %lu, port %hu.\n", m_sai.sin_addr.s_addr, m_sai.sin_port);
 }
 
-std::vector<Address> Address::deserialize(const Packet& packet)
+//Packet Address::fuse(const std::vector<Address>& addresses, const Packet& data)
+//{
+//	Packet output;
+//	return output;
+//}
+//
+//std::pair<std::vector<Address>, Packet> Address::unfuse(const Packet& input)
+//{
+//	return std::pair<std::vector<Address>, Packet>();
+//}
+
+std::vector<Address> Address::decode(const Packet& packet)
 {
-	assert(packet.getType() == PacketType::LIST_ALL_ACTIVE);
+	//assert(packet.getType() == PacketType::LIST_ALL_ACTIVE);	//Might not always be the case.
+	//assert(packet.getMode() == PacketMode::MULTICAST);		//Also not always true cause of explicit operations.
 	const size_t addressCount = packet.buffer()[0];
 	std::vector<Address> result(addressCount);
 	const Address* address = reinterpret_cast<const Address*>(packet.buffer().data() + 1);
@@ -142,4 +154,17 @@ std::vector<Address> Address::deserialize(const Packet& packet)
 		address++;//I could be edgy and increment this counter in loop initialization, but that makes me stress.
 	}
 	return result;
+}
+
+Packet Address::encode(const std::vector<Address>& addresses)
+{	//Type doesn't actually matter, will most likely be overwritten cause data should be added explicitly.
+	Packet packet(PacketType::GENERIC, PacketMode::MULTICAST);
+	packet.buffer()[0] = addresses.size();
+	size_t offset = 1;
+	//const Address& address : addresses//I'm scared of range based for loops cause idk if & will break whatever the iterator is implemented as.
+	for (size_t i = 0; i < addresses.size(); i++) {
+		packet.write(&addresses[i], sizeof(Address), offset);
+		offset += sizeof(Address);
+	}
+	return packet;
 }

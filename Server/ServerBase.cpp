@@ -61,6 +61,9 @@ bool ServerBase::recv()
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_incoming.push_back({ packet, address });
 		m_clients[address].m_active = true;
+		if (packet.getType() == PacketType::STATUS_UPDATE)
+			m_clients[address].m_status = (ClientStatus)packet.buffer()[0];
+		//Do a switch here to examine buffer()[1]. Let's hope we can pass a number that corresponds to clients that should have their status' updated.
 		return true;
 	}
 	return false;
@@ -94,6 +97,14 @@ void ServerBase::refresh()
 				break;
 		}
 		broadcast(packet);
+		//Status update (I could put this in the above loop but I'm trying to minimize potential sources of error at this hour):
+		Packet statusUpdate(PacketType::STATUS_UPDATE, PacketMode::ONE_WAY);
+		size_t updateOffset = 0;
+		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
+			statusUpdate.write(&itr->second.m_status, 1, updateOffset);
+			updateOffset++;
+		}
+		broadcast(statusUpdate);
 	}
 }
 

@@ -47,16 +47,16 @@ void Server::setState(ServerState serverState)
 #ifdef SERVER_LOGGING
 	switch (serverState)
 	{
-	case IDLE:
+	case ServerState::IDLE:
 		printf("Idling...\n");
 		break;
-	case CONNECT:
+	case ServerState::CONNECT:
 		printf("Connecting.\n");
 		break;
-	case DISCONNECT:
+	case ServerState::DISCONNECT:
 		printf("Disconnecting.\n");
 		break;
-	case ROUTE:
+	case ServerState::ROUTE:
 		printf("Routing.\n");
 		break;
 	default:
@@ -69,13 +69,13 @@ void Server::run()
 {
 	while (m_running) {
 		switch (getState()) {
-		case IDLE:
+		case ServerState::IDLE:
 			break;
-		case CONNECT:
+		case ServerState::CONNECT:
 			break;
-		case DISCONNECT:
+		case ServerState::DISCONNECT:
 			break;
-		case ROUTE: {
+		case ServerState::ROUTE: {
 			std::future<void> syncRecv = std::async(&Server::recvAll, this);
 			std::future<void> syncSend = std::async(&Server::sendAll, this);
 			syncRecv.wait();

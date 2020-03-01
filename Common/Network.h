@@ -3,6 +3,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <vector>
+#include <utility>
 typedef std::vector<Packet> PacketBuffer;
 
 //Returns the indices in which packets of type packetType can be found within the packet buffer.
@@ -44,6 +45,13 @@ public:
 	static void bindSocket(SOCKET soc, ADDRINFO* address);
 };
 
+//The server sorta already has this, but I'm running out of time xD
+//Never mind about this structure.
+//struct AddressPacket {
+//	Packet m_packet;
+//	std::vector<Address> m_addresses;
+//};
+
 struct Address {
 	Address();
 	//Construct from packet.
@@ -56,9 +64,26 @@ struct Address {
 	bool recvFrom(SOCKET soc, Packet& packet);
 
 	void print() const;
-	static std::vector<Address> deserialize(const Packet& packet);
+
+	static std::vector<Address> decode(const Packet& packet);
+	static Packet encode(const std::vector<Address>& addresses);
+	
+	//These would be more useful than what I have currently, but time is of the essence!
+	//static Packet fuse(const std::vector<Address>& addresses, const Packet& packet);
+	//static std::pair<std::vector<Address>, Packet> unfuse(const Packet& packet);
 };
 
 struct AddressHash {
 	ULONG operator()(const Address& key) const;
+};
+
+//Its late
+enum ClientStatus : byte {
+	//NONE,//I don't have the time to figure out where there's an ambiguous NONE/COUNT xD
+	A,
+	FREE,
+	IN_CHAT,
+	IN_GAME,
+	B
+	//COUNT
 };
