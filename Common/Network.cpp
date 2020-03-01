@@ -101,6 +101,11 @@ Address::Address()
 	m_length = sizeof(SOCKADDR_IN);
 }
 
+//Address::Address(const Packet& packet)
+//{
+//	packet.read(this, sizeof(Address));
+//}
+
 bool Address::operator==(const Address& address) const
 {
 	return compareAddresses(m_sai, address.m_sai);
@@ -119,4 +124,22 @@ bool Address::recvFrom(SOCKET soc, Packet& packet)
 			return recvfrom(soc, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&m_sai), &m_length) != SOCKET_ERROR;
 	}
 	return false;
+}
+
+void Address::print() const
+{
+	printf("Ip address: %lu, port %hu.\n", m_sai.sin_addr.s_addr, m_sai.sin_port);
+}
+
+std::vector<Address> Address::deserialize(const Packet& packet)
+{
+	assert(packet.getType() == PacketType::LIST_ALL_ACTIVE);
+	const size_t addressCount = packet.buffer()[0];
+	std::vector<Address> result(addressCount);
+	const Address* address = reinterpret_cast<const Address*>(packet.buffer().data() + 1);
+	for (size_t i = 0; i < addressCount; i++) {
+		result[i] = *address;
+		address++;//I could be edgy and increment this counter in loop initialization, but that makes me stress.
+	}
+	return result;
 }

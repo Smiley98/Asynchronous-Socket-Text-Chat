@@ -30,12 +30,15 @@ int main() {
 			std::vector<size_t> indices = findPacketOfType(PacketType::LIST_ALL_ACTIVE, incoming);
 			if (indices.size() > 0) {
 				//Have a printout of all the active clients, then switch state based on input ie /c followed by client names to chat, /g to start a game!
+				std::vector<Address> addresses = Address::deserialize(incoming[indices.back()]);
+				for (const Address& address : addresses)
+					address.print();
 			}
-			//Probably don't need to handle ALL incoming packets IMMEDIATELY upon receive.
-			for (const Packet& packet : incoming) {
-				if (packet.getType() == PacketType::STRING)
-					printf("%s\n", packet.toString().c_str());
-			}
+
+			//for (const Packet& packet : incoming) {
+			//	if (packet.getType() == PacketType::STRING)
+			//		printf("%s\n", packet.toString().c_str());
+			//}
 		}
 	}
 

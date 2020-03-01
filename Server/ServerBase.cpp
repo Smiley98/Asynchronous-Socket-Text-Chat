@@ -83,10 +83,15 @@ void ServerBase::refresh()
 		}
 		//2. Broadcast a list of active clients (clients are responsible from removing themselves from this list).
 		Packet packet(PacketType::LIST_ALL_ACTIVE, PacketMode::ONE_WAY);
-		size_t offset = 0;
+		byte clientCount = m_clients.size();
+		size_t offset = 1;
+		packet.write(&clientCount, offset);
 		for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
 			packet.write(&itr->first, sizeof(Address), offset);
 			offset += sizeof(Address);
+			//Prevent overflow, although we'd have to have a significant amount of clients for this to occur.
+			if (offset + sizeof(Address) > Packet::bufferSize())
+				break;
 		}
 		broadcast(packet);
 	}

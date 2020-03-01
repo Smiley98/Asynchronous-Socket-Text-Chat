@@ -46,12 +46,17 @@ public:
 
 struct Address {
 	Address();
+	//Construct from packet.
+	//Address(const Packet& packet);
 	SOCKADDR_IN m_sai;
 	int m_length;
 	bool operator==(const Address& address) const;
 
 	bool sendTo(SOCKET soc, const Packet& packet) const;
 	bool recvFrom(SOCKET soc, Packet& packet);
+
+	void print() const;
+	static std::vector<Address> deserialize(const Packet& packet);
 };
 
 struct AddressHash {
