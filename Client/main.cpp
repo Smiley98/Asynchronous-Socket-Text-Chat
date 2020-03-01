@@ -9,7 +9,8 @@
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
 	while (true) {
-		printf("Type to chat.\n");
+		//printf("Type to chat.\n");
+		printf("Type /g <client name> to start a game, /c <client name> to enter chat.\n");
 		std::string line;
 		std::getline(std::cin, line);
 		line += "\n";
@@ -51,22 +52,22 @@ int main() {
 			timer.restart();
 			//system("cls");//Must be dropping packets or something because the text flickers if I clear regardless. Will try only clearing on status change.
 			client.copyIncoming(incoming);
-			//Reassigned later (A + addresses.size() lmao).
-			size_t clientCount = 0;
 
-			//Could also write the client's status in these active list packets (ie available, in chat, in game).
+			//Gotta have some not immediately relevant stuff here because of scope:
+			std::vector<Address> addresses;
+			std::vector<size_t> statusIndices;
+			char clientLabel = 'A';
+
 			std::vector<size_t> indices = findPacketOfType(PacketType::LIST_ALL_ACTIVE, incoming);
 			if (indices.size() > 0) {
 				//Have a printout of all the active clients, then switch state based on input ie /c followed by client names to chat, /g to start a game!
 				Packet& recentInfo = incoming[indices.back()];
-				std::vector<Address> addresses = Address::decode(recentInfo);
+				addresses = Address::decode(recentInfo);
 				//Packet data = decouple(recentInfo, addresses);//Decided not to go with a monolithic update packet.
-				std::vector<size_t> statusIndices = findPacketOfType(PacketType::STATUS_UPDATE, incoming);
+				statusIndices = findPacketOfType(PacketType::STATUS_UPDATE, incoming);
 				if (statusIndices.size() > 0) {
 					system("cls");
 					//This is less than ideal, but status update and indices should be 1:1.
-
-					char clientLabel = 'A';
 					for (size_t i = 0; i < addresses.size(); i++) {
 						byte status = incoming[statusIndices.back()].buffer()[i];//Down the rabit hole. Smh...
 						switch (status)
@@ -88,20 +89,46 @@ int main() {
 				}
 			}
 
-			queueMutex.lock();
 			//Status packet.
-			Packet p(PacketType::STATUS_UPDATE, PacketMode::ONE_WAY);
+			Packet p(PacketType::STATUS_UPDATE, PacketMode::MULTICAST);
 			ClientStatus s = ClientStatus::FREE;
+			queueMutex.lock();
 			while (inputQueue.size() > 0) {
-				if (inputQueue.front() == "/g") {
-					printf("PRIMEOPS!!!\n");
-					//Idk how to tell other clients that they're in game.
-					s = ClientStatus::IN_GAME;
+				//I am sorry about this logic xD.
+				if (inputQueue.front()[0] == '/' && inputQueue.front()[1] == 'g') {
+					if (inputQueue.front()[3] >= 'A' && inputQueue.front()[3] <= 'Z') {
+						s = ClientStatus::IN_GAME;
+						printf("Starting game with client %c.\n", inputQueue.front()[3]);
+						if (addresses.size() > 0) {
+							//Package the address and the status update data into the packet and call it a day.
+							std::vector<Address> address = { addresses[inputQueue.front()[3] - clientLabel] };
+							std::vector<byte> data{ s };
+							p = combine(address, data);
+						}
+					}
+				}
+				//Didn't have enough time to actually implement proper client state and make a chat.
+				else if (inputQueue.front()[0] == '/' && inputQueue.front()[1] == 'c') {
+					if (inputQueue.front()[3] >= 'A' && inputQueue.front()[3] <= 'Z') {
+						s = ClientStatus::IN_CHAT;
+						printf("Chatting with client %c.\n", inputQueue.front()[3]);
+						if (addresses.size() > 0) {
+							//Package the address and the status update data into the packet and call it a day.
+							std::vector<Address> address = { addresses[inputQueue.front()[3] - clientLabel] };
+							std::vector<byte> data{ s };
+							p = combine(address, data);
+						}
+					}
 				}
 				inputQueue.pop();
 			}
 			queueMutex.unlock();
-			p.write(&s, 1);
+
+			//Don't multicast if we're free.
+			if (s == ClientStatus::FREE) {
+				p.setMode(PacketMode::ONE_WAY);
+				p.write(&s, 1);
+			}
 			client.addOutgoing(p);
 		}
 	}
