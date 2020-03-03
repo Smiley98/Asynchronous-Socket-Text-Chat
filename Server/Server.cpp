@@ -50,12 +50,12 @@ void Server::setState(ServerState serverState)
 	case ServerState::IDLE:
 		printf("Idling...\n");
 		break;
-	case ServerState::CONNECT:
-		printf("Connecting.\n");
-		break;
-	case ServerState::DISCONNECT:
-		printf("Disconnecting.\n");
-		break;
+	//case ServerState::CONNECT:
+	//	printf("Connecting.\n");
+	//	break;
+	//case ServerState::DISCONNECT:
+	//	printf("Disconnecting.\n");
+	//	break;
 	case ServerState::ROUTE:
 		printf("Routing.\n");
 		break;
@@ -71,10 +71,10 @@ void Server::run()
 		switch (getState()) {
 		case ServerState::IDLE:
 			break;
-		case ServerState::CONNECT:
-			break;
-		case ServerState::DISCONNECT:
-			break;
+		//case ServerState::CONNECT:
+		//	break;
+		//case ServerState::DISCONNECT:
+		//	break;
 		case ServerState::ROUTE: {
 			std::future<void> syncRecv = std::async(&Server::recvAll, this);
 			std::future<void> syncSend = std::async(&Server::sendAll, this);

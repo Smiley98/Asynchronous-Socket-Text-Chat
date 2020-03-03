@@ -1,19 +1,16 @@
 #pragma once
 #include <cassert>
 #include <array>
+#include <vector>
 #include <string>
 
 typedef unsigned char byte;
 enum class PacketType : byte {
 	NONE = 0,
 	GENERIC,
-	CONNECT,
-	DISCONNECT,
-	LIST_ALL_ACTIVE,
 	STRING,
-	//Insert game-specific packet types here.
+	ALL_CLIENT_INFORMATION,
 	STATUS_UPDATE,
-	//End game-specific labels.
 	COUNT
 };
 
@@ -35,14 +32,17 @@ public:
 	PacketBase(PacketType packetType, PacketMode packetMode);
 	PacketBase(const std::string& string, PacketMode packetMode = PacketMode::ONE_WAY);
 
+//private://I would leave these private and give friendship but then I lose auto-complete...
+	const char* signedBytes() const;
+	char* signedBytes();
+	const byte* bytes() const;
+	byte* bytes();
+	const std::array<byte, count>& buffer() const;
+	std::array<byte, count>& buffer();
+//public:
+
 	std::string toString() const;
 	void fromString(const std::string& string);
-
-	//Writes size amount of memory to dst from m_internal.raw.data() + offset.
-	void read (      void* dst, size_t size = count, size_t offset = 0) const;
-
-	//Writes size amount of memory to m_internal.raw.data() + offset from src.
-	void write(const void* src, size_t size = count, size_t offset = 0);
 
 	PacketType getType() const;
 	void setType(PacketType packetType);
@@ -52,17 +52,42 @@ public:
 	void setMode(PacketMode packetMode);
 	std::string modeString() const;
 
+	//Writes size amount of memory to dst from m_internal.raw.data() + offset.
+	void read (      void* dst, size_t size = count, size_t offset = 0) const;
+
+	//Writes size amount of memory to m_internal.raw.data() + offset from src.
+	void write(const void* src, size_t size = count, size_t offset = 0);
+
 	static constexpr size_t size();
 	static constexpr size_t bufferSize();
 	static constexpr size_t metadata();
 
-	//I would leave these private and give friendship but then I lose auto-complete...
-	const char* signedBytes() const;
-	char* signedBytes();
-	const byte* bytes() const;
-	byte* bytes();
-	const std::array<byte, count>& buffer() const;
-	std::array<byte, count>& buffer();
+	template<typename T>
+	static void serialize(const T& input, PacketBase<count>& output) {
+		static_assert(1 + sizeof(T) <= PacketBase<count>::bufferSize());
+		output.buffer()[0] = 1;
+		output.write(&input, sizeof(T), 1);
+	}
+
+	template<typename T>
+	static void deserialize(const PacketBase<count>& input, T& output) {
+		static_assert(1 + sizeof(T) <= PacketBase<count>::bufferSize());
+		input.read(&output, sizeof(T), 1);
+	}
+
+	template<typename T>
+	static void serialize(const std::vector<T>& input, PacketBase<count>& output) {
+		assert(1 + sizeof(T) * input.size() <= PacketBase<count>::bufferSize());
+		output.buffer()[0] = input.size();
+		output.write(input.data(), sizeof(T) * input.size(), 1);
+	}
+
+	template<typename T>
+	static void deserialize(const PacketBase<count>& input, std::vector<T>& output) {
+		assert(1 + sizeof(T) * input.buffer()[0] <= PacketBase<count>::bufferSize());
+		output.resize(input.buffer()[0]);
+		input.read(output.data(), sizeof(T) * output.size(), 1);
+	}
 
 protected:
 	void init();
@@ -80,7 +105,6 @@ private:
 class Packet :
 	public PacketBase<512>
 {
-
 public:
 	Packet() = default;
 	Packet(PacketType packetType, PacketMode packetMode);

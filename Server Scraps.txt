@@ -1,17 +1,45 @@
-//Server test code:
-/*Network::initialize();
-SOCKET soc = Network::createSocket();
-ADDRINFO* address = Network::createAddress(true, "");
-Network::bindSocket(soc, address);
+//Can get rid of my hacked broadcast code:
+Packet addressPacket(PacketType::EVERY_ADDRESS, PacketMode::ONE_WAY);
+byte clientCount = m_clients.size();
+size_t addressOffset = 1;
+addressPacket.write(&clientCount, addressOffset);
+for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
+    addressPacket.write(&itr->first, sizeof(Address), addressOffset);
+    addressOffset += sizeof(Address);
+    //Prevent overflow, although we'd have to have a significant amount of clients for this to occur.
+    if (addressOffset + sizeof(Address) > Packet::bufferSize())
+        break;
+}
+broadcast(addressPacket);
+//Status update (I could put this in the above loop but I'm trying to minimize potential sources of error at this hour):
+Packet statusUpdate(PacketType::EVERY_STATUS, PacketMode::ONE_WAY);
+size_t updateOffset = 0;
+for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++) {
+    statusUpdate.write(&itr->second.m_status, 1, updateOffset);
+    updateOffset++;
+}
+broadcast(statusUpdate);
 
-SOCKADDR_IN fromAddress;
-int fromLength = sizeof(fromAddress);
+//Can also gut the multicast code:
+//Read the number of addresses.
+const size_t addressCount = packet.buffer()[0];
+//+1 because we're reserving the first byte of the buffer for the address count.
+const size_t addressMemoryLength = 1 + addressCount * sizeof(Address);
+const size_t nonAddressMemoryLength = Packet::bufferSize() - addressMemoryLength;
 
-Packet packet;
-size_t counter = 0;
-while (true) {
-    if (recvfrom(soc, packet.signedBytes(), packet.size(), 0, (SOCKADDR*)&fromAddress, &fromLength) != SOCKET_ERROR) {
-        printf("Server received%zu: %s\n", ++counter, packet.signedBytes());
-        sendto(soc, packet.signedBytes(), packet.size(), 0, (SOCKADDR*)&fromAddress, fromLength);
-    }
-}*/
+//Write the non-address memory of the original packet to the outgoing packet (including metadata).
+Packet outgoing;
+packet.read(outgoing.bytes(), nonAddressMemoryLength, addressMemoryLength);
+
+//Point to the start of the address information.
+const Address* address = reinterpret_cast<const Address*>(packet.buffer().data() + 1);
+
+bool result = true;
+//Despite address being const, we're changing its memory location so it holds a different value each iteration.
+for (size_t i = 0; i < addressCount; i++) {
+    result &= address->sendTo(m_socket, outgoing);
+    address += sizeof(Address);
+}
+return result;
+//And that my friends, is how we break our brain using pointer arithmetic and no dynamic allocation.
+//In a perfect world, I would derive from my NetworkObject class and override the serialize and deserialize methods.

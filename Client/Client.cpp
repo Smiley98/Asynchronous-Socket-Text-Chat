@@ -49,12 +49,12 @@ void Client::setState(ClientState clientState)
 	case IDLE:
 		printf("Idling...\n");
 		break;
-	case CONNECT:
-		printf("Connecting.\n");
-		break;
-	case DISCONNECT:
-		printf("Disconnecting.\n");
-		break;
+	//case CONNECT:
+	//	printf("Connecting.\n");
+	//	break;
+	//case DISCONNECT:
+	//	printf("Disconnecting.\n");
+	//	break;
 	case CONSUME:
 		printf("Consuming.\n");
 		break;
@@ -70,16 +70,16 @@ void Client::run()
 		switch (getState()) {
 		case IDLE:
 			break;
-		case CONNECT: {
-			if (exchange(PacketType::CONNECT, PacketMode::TWO_WAY))
-				setState(CONSUME);
-			break;
-		}
-		case DISCONNECT: {
-			if (exchange(PacketType::DISCONNECT, PacketMode::TWO_WAY))
-				setState(IDLE);
-			break;
-		}
+		//case CONNECT: {
+		//	if (exchange(PacketType::CONNECT, PacketMode::TWO_WAY))
+		//		setState(CONSUME);
+		//	break;
+		//}
+		//case DISCONNECT: {
+		//	if (exchange(PacketType::DISCONNECT, PacketMode::TWO_WAY))
+		//		setState(IDLE);
+		//	break;
+		//}
 		//Sends/receives all incoming/outgoing packets, leaving the client free to enque/deque packets at will!
 		case CONSUME:
 			std::future<void> syncSend = std::async(&Client::sendAll, this, 0, true);

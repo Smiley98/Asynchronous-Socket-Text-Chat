@@ -5,10 +5,7 @@
 
 enum ServerState : byte {
 	IDLE,
-	CONNECT,
-	DISCONNECT,
-	ROUTE,
-	COUNT
+	ROUTE
 };
 
 class Server
