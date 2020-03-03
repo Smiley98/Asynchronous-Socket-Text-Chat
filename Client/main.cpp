@@ -1,6 +1,6 @@
 #include "Client.h"
 #include "../Common/Timer.h"
-#include "../Common/Address.h"
+#include "../Common/ClientInfo.h"
 #include <iostream>
 #include <string>
 #include <queue>
@@ -21,20 +21,18 @@ void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
 	}
 }
 
-/*Packet combine(const std::vector<Address>& addresses, const std::vector<byte>& data) {
-	Packet packet = Address::encode(addresses);
-	//const size_t addressMemoryLength = 1 + addresses.size() * sizeof(Address);
-	packet.write(data.data(), data.size(), 1 + addresses.size() * sizeof(Address));
-	return packet;
+//Combine addresses with a byte vector representing a packet (including the packet's metadata).
+Packet combine(const std::vector<Address>& addresses, const Packet& input, size_t size) {
+	assert(size < 256);
+	assert(1 + sizeof(Address) * addresses.size() + 1 + size <= Packet::bufferSize());
+	Packet output;
+	Packet::serialize(addresses, output);
+	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
+	output.write(&size, 1, dataStart);//Only one byte used to store the size so despite writing a size_t we can only store up to 256 bytes of tailing data.
+	output.write(input.bytes(), size, dataStart + 1);
+	return output;
+	//We only need a function to aid in combining addresses with data for multicasting. The server does the extraction so we'll only ever receive data.
 }
-
-//Retrieve the data from an address/data packet
-Packet decouple(const Packet& packet, const std::vector<Address>& addresses) {
-	size_t dataStart = 1 + addresses.size() * sizeof(Address);
-	Packet result;
-	packet.read(result.bytes(), Packet::bufferSize() - dataStart, dataStart);
-	return result;
-}*/
 
 int main() {
 	Client client;
@@ -45,21 +43,57 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
-	Timer timer;
+	Timer networkTimer, renderTimer, inputTimer;
 	PacketBuffer incoming;
-	while (true) {
-		//Run at 10 fps cause why not :D
-		if (timer.elapsed() >= 100.0) {
-			timer.restart();
-			client.copyIncoming(incoming);
+	std::vector<ClientInfo> clientInfo;
 
-			queueMutex.lock();
-			while (inputQueue.size() > 0) {
-				inputQueue.front();
-				inputQueue.pop();
+	while (true) {
+		//Do network stuff every 0.1 seconds.
+		if (networkTimer.elapsed() >= 100.0) {
+			networkTimer.restart();
+			client.copyIncoming(incoming);
+			Packet ping(PacketType::GENERIC, PacketMode::ONE_WAY);
+			client.addOutgoing(ping);
+
+			//Update the client information only if there's new information.
+			std::vector<size_t> clientInfoIndices = findPacketOfType(PacketType::ALL_CLIENT_INFORMATION, incoming);
+			if (clientInfoIndices.size() > 0) {
+				Packet& mostRecentClientInfo = incoming[clientInfoIndices.back()];
+				Packet::deserialize(mostRecentClientInfo, clientInfo);
 			}
-			queueMutex.unlock();
 		}
+
+		//Render every 100ms as well because the console has a terrible fill rate.
+		if (renderTimer.elapsed() >= 100.0) {
+			renderTimer.restart();
+			system("cls");
+			char clientLabel = 'A';
+			for (const ClientInfo& cl : clientInfo) {
+				cl.first.print();
+				switch (cl.second.m_status)
+				{
+				case FREE:
+					printf("Client %c is free.\n", clientLabel);
+					break;
+				case IN_CHAT:
+					printf("Client %c is in a chat.\n", clientLabel);
+					break;
+				case IN_GAME:
+					printf("Client %c is in a game.\n", clientLabel);
+					break;
+				default:
+					break;
+				}
+				clientLabel++;
+			}
+		}
+
+		queueMutex.lock();
+		while (inputQueue.size() > 0) {
+			inputQueue.front();
+			inputQueue.pop();
+		}
+		queueMutex.unlock();
 	}
 
 	return getchar();

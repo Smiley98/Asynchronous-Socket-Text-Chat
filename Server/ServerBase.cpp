@@ -1,7 +1,9 @@
 #include "ServerBase.h"
 #include "../Common/Timer.h"
 #include <cstdio>
-#define TIMEOUT 2000.0
+
+//Quick timeout for debug purposes. Its not costly but might as well keep it between 1-2 seconds in production.
+#define TIMEOUT 100.0
 #define LOGGING true
 
 void ServerBase::sendAll()
@@ -110,13 +112,16 @@ bool ServerBase::multicast(const Packet& packet)
 	std::vector<Address> addresses;
 	Packet::deserialize(packet, addresses);
 
+	//Write to bytes rather than buffer because type/mode information is encoded in the incoming packet so clients will know how to interpret the data.
 	Packet outgoing;
-	const size_t informationStart = 1 + sizeof(Address) * addresses.size();
-	packet.read(outgoing.buffer().data(), packet.buffer()[informationStart] + 1, informationStart);
+	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
+	const size_t dataSize = packet.buffer()[dataStart];
+	packet.read(outgoing.bytes(), dataSize, dataStart + 1);
 
+	bool result = false;
 	for (const Address& address : addresses)
-		address.sendTo(m_socket, outgoing);
-	return true;
+		result &= address.sendTo(m_socket, outgoing);
+	return result;
 }
 
 bool ServerBase::reroute(const Packet& packet, const Address& exemptClient)
