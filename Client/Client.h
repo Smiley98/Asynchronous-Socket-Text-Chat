@@ -5,8 +5,6 @@
 
 enum ClientState : byte {
 	IDLE,
-	//CONNECT,
-	//DISCONNECT,
 	CONSUME
 };
 

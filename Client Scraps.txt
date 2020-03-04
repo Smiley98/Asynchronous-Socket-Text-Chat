@@ -1,0 +1,6 @@
+//Update the client information only if there's new information.
+std::vector<size_t> clientInfoIndices = findPacketOfType(PacketType::ALL_CLIENT_INFORMATION, incoming);
+if (clientInfoIndices.size() > 0) {
+    Packet& mostRecentClientInfo = incoming[clientInfoIndices.back()];
+    Packet::deserialize(mostRecentClientInfo, clientInfo);
+}

@@ -17,8 +17,6 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	bool result = true;
 	switch (packet.getMode())
 	{
-	case PacketMode::ONE_WAY:
-		break;
 	case PacketMode::TWO_WAY:
 		result = fromAddress.sendTo(m_socket, packet);
 	case PacketMode::REROUTE:
@@ -46,7 +44,6 @@ bool ServerBase::recv()
 	Packet packet;
 	Address address;
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
-		m_incoming.push_back({ packet, address });
 		m_clients[address].m_active = true;
 
 		switch (packet.getType())
@@ -59,9 +56,17 @@ bool ServerBase::recv()
 			printf("String packet: %s\n", packet.toString().c_str());
 #endif
 			break;
+		case PacketType::THIS_CLIENT_INFORMATION:
+			ClientInfo clientInfo = std::make_pair(address, m_clients[address]);
+			Packet::serialize(clientInfo, packet);
+			break;
 		default:
 			break;
 		}
+
+		//No need to append packets if they're not meant to be routed.
+		if (packet.getMode() != PacketMode::ONE_WAY)
+			m_incoming.push_back({ packet, address });
 
 		return true;
 	}
@@ -86,17 +91,17 @@ void ServerBase::refresh()
 		}
 
 		//2. Broadcast a list of active clients (clients are responsible from removing themselves from this list).
-		std::vector<ClientInfo> allClientInformation(m_clients.size());
+		std::vector<ClientInfo> everyClientInformation(m_clients.size());
 		size_t count = 0;
 		for (const auto& i : m_clients) {
-			allClientInformation[count] = i;
+			everyClientInformation[count] = i;
 			count++;
 		}
 
-		Packet packet(PacketType::ALL_CLIENT_INFORMATION, PacketMode::ONE_WAY);
-		Packet::serialize(allClientInformation, packet);
-		for (const ClientInfo& cl : allClientInformation)
-			cl.first.sendTo(m_socket, packet);
+		Packet packet(PacketType::EVERY_CLIENT_INFORMATION, PacketMode::ONE_WAY);
+		Packet::serialize(everyClientInformation, packet);
+		for (const ClientInfo& clientInfo : everyClientInformation)
+			clientInfo.first.sendTo(m_socket, packet);
 	}
 }
 
