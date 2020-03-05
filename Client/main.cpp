@@ -10,8 +10,20 @@
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
 
-//Combine addresses with a byte vector representing a packet (including the packet's metadata).
-Packet combine(const std::vector<Address>& addresses, const Packet& input, size_t size);
+template<typename T>
+Packet combine(const std::vector<Address>& addresses, const T& object, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
+	//The packet type at the start doesn't matter because the data after the addresses is what's multicasted.
+	Packet packet(PacketType::GENERIC, PacketMode::MULTICAST);
+	Packet::serialize(addresses, packet);
+	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
+	//Write the number of trailing bytes.
+	packet.buffer()[dataStart] = sizeof(T) + Packet::headerSize();
+	packet.buffer()[dataStart + 1] = static_cast<byte>(packetType);
+	packet.buffer()[dataStart + 2] = static_cast<byte>(packetMode);
+	//After trailing bytes + metadata, write the object.
+	packet.write(&object, sizeof(object), dataStart + Packet::headerSize() + 1);
+	return packet;
+}
 
 void appIdle() {
 
@@ -24,6 +36,13 @@ void appChat() {
 void appGame() {
 
 }
+
+struct Test {
+	int a = 6;
+	double garbage;
+	char moreGarbage[3];
+	int b = 9;
+};
 
 int main() {
 	Client client;
@@ -40,25 +59,44 @@ int main() {
 	std::vector<ClientInformation> allClientInfomration;
 	ClientInformation thisClientInformation;
 
+	//We never need more than one packet to read/write to/from because read/write operations are sequential copying.
+	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
+
 	while (true) {
 		//Do network stuff every 0.1 seconds.
 		if (networkTimer.elapsed() >= 100.0) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
-			Packet thisClientQuery(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
-			client.addOutgoing(thisClientQuery);
+			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
+			client.addOutgoing(packet);
+
+			//Initialize multicast data!
+			std::vector<Address> addresses(allClientInfomration.size());
+			for (size_t i = 0; i < addresses.size(); i++)
+				addresses[i] = allClientInfomration[i].m_address;
+			Test test;
+			packet = combine(addresses, test, PacketType::TEST);
+			client.addOutgoing(packet);
 
 			//Deserialize all incoming packets.
-			for (const Packet& packet : incoming) {
-				switch (packet.getType())
+			for (const Packet& i : incoming) {
+				switch (i.getType())
 				{
 				case PacketType::GET_ALL_CLIENT_INFORMATION:
-					Packet::deserialize(packet, allClientInfomration);
+					Packet::deserialize(i, allClientInfomration);
 					break;
 				case PacketType::GET_THIS_CLIENT_INFORMATION:
-					Packet::deserialize(packet, thisClientInformation);
+					Packet::deserialize(i, thisClientInformation);
 					break;
+				case PacketType::TEST: {
+					Test test;
+					test.a = 1;
+					test.b = 2;
+					Packet::deserialize(i, test);
+					printf("Test: %i %i\n", test.a, test.b);
+					break;
+				}
 				default:
 					break;
 				}
@@ -78,13 +116,13 @@ int main() {
 
 				switch (clientInformation.m_status)
 				{
-				case FREE:
+				case ClientStatus::FREE:
 					printf("Client %c is free.\n", clientLabel);
 					break;
-				case IN_CHAT:
+				case ClientStatus::IN_CHAT:
 					printf("Client %c is in a chat.\n", clientLabel);
 					break;
-				case IN_GAME:
+				case ClientStatus::IN_GAME:
 					printf("Client %c is in a game.\n", clientLabel);
 					break;
 				default:
@@ -103,7 +141,7 @@ int main() {
 				//TODO: implement a mapping between client indices and labels so we can parse the clients we wish to multicast to ie A, B, C.
 				if (inputQueue.front().substr(0, 2) == "/g") {//(Put every client in a game as of now).
 					for (ClientInformation clientInformation : allClientInfomration) {
-						Packet packet(PacketType::SET_CLIENT_STATUS, PacketMode::ONE_WAY);
+						packet = Packet(PacketType::SET_CLIENT_STATUS, PacketMode::ONE_WAY);
 						clientInformation.m_status = ClientStatus::IN_GAME;
 						Packet::serialize(clientInformation, packet);
 						client.addOutgoing(packet);
@@ -116,13 +154,13 @@ int main() {
 			//Game logic:
 			switch (thisClientInformation.m_status)
 			{
-			case FREE:
+			case ClientStatus::FREE:
 				appIdle();
 				break;
-			case IN_CHAT:
+			case ClientStatus::IN_CHAT:
 				appChat();
 				break;
-			case IN_GAME:
+			case ClientStatus::IN_GAME:
 				appGame();
 				break;
 			default:
@@ -132,18 +170,6 @@ int main() {
 	}
 
 	return getchar();
-}
-
-Packet combine(const std::vector<Address>& addresses, const Packet& input, size_t size) {
-	assert(size < 256);
-	assert(1 + sizeof(Address) * addresses.size() + 1 + size <= Packet::bufferSize());
-	Packet output;
-	Packet::serialize(addresses, output);
-	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
-	output.write(&size, 1, dataStart);//Only one byte used to store the size so despite writing a size_t we can only store up to 256 bytes of tailing data.
-	output.write(input.bytes(), size, dataStart + 1);
-	return output;
-	//We only need a function to aid in combining addresses with data for multicasting. The server does the extraction so we'll only ever receive data.
 }
 
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {

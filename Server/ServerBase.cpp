@@ -125,11 +125,15 @@ bool ServerBase::multicast(const Packet& packet)
 	std::vector<Address> addresses;
 	Packet::deserialize(packet, addresses);
 
-	//Write to bytes rather than buffer because type/mode information is encoded in the incoming packet so clients will know how to interpret the data.
-	Packet outgoing;
 	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
 	const size_t dataSize = packet.buffer()[dataStart];
-	packet.read(outgoing.bytes(), dataSize, dataStart + 1);
+
+	//Yuck xD.
+	Packet outgoing(static_cast<PacketType>(packet.buffer()[dataStart + 1]), static_cast<PacketMode>(packet.buffer()[dataStart + 2]));
+	//Assume that we're writing a single object (deserialization expects the object count followed by the data).
+	outgoing.buffer()[0] = 1;
+	//Also yuck.
+	packet.read(&outgoing.buffer()[1], dataSize - Packet::headerSize(), dataStart + Packet::headerSize() + 1);
 
 	bool result = false;
 	for (const Address& address : addresses)

@@ -1,7 +1,7 @@
 #pragma once
 #include "Address.h"
 
-enum ClientStatus : byte {
+enum class ClientStatus : byte {
 	FREE,
 	IN_CHAT,
 	IN_GAME

@@ -3,7 +3,7 @@
 #include <atomic>
 #include <thread>
 
-enum ClientState : byte {
+enum class ClientState : byte {
 	IDLE,
 	CONSUME
 };
@@ -23,7 +23,7 @@ public:
 
 private:
 	std::thread m_thread;
-	std::atomic_uchar m_state = IDLE;
+	std::atomic_uchar m_state = static_cast<byte>(ClientState::IDLE);
 	bool m_running = false;
 	void run();
 };

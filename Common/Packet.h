@@ -14,6 +14,8 @@ enum class PacketType : byte {
 	GET_THIS_CLIENT_INFORMATION,
 	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
 
+	TEST,
+
 	COUNT
 };
 
@@ -55,6 +57,9 @@ public:
 	void setMode(PacketMode packetMode);
 	std::string modeString() const;
 
+	//Zeros memory.
+	void init();
+
 	//Writes size amount of memory to dst from m_internal.raw.data() + offset.
 	void read (      void* dst, size_t size = count, size_t offset = 0) const;
 
@@ -91,9 +96,6 @@ public:
 		output.resize(input.buffer()[0]);
 		input.read(output.data(), sizeof(T) * output.size(), 1);
 	}
-
-protected:
-	void init();
 
 private:
 	//Protected accessors can be overwritten if desired.
@@ -190,12 +192,6 @@ inline std::string PacketBase<count>::typeString() const
 	{
 		case PacketType::GENERIC:
 			return "generic";
-		case PacketType::CONNECT:
-			return "connect";
-		case PacketType::DISCONNECT:
-			return "disconnect";
-		case PacketType::LIST_ALL_ACTIVE:
-			return "active list";
 		case PacketType::STRING:
 			return "string";
 		default:
@@ -230,8 +226,8 @@ std::string PacketBase<count>::modeString() const
 			return "reroute";
 		case PacketMode::BROADCAST:
 			return "broadcast";
-		case PacketMode::SPECIFIC:
-			return "specific";
+		case PacketMode::MULTICAST:
+			return "multicast";
 		default:
 			return "";
 	}

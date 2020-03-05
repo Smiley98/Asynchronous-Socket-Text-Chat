@@ -3,7 +3,7 @@
 #include <thread>
 #include <atomic>
 
-enum ServerState : byte {
+enum class ServerState : byte {
 	IDLE,
 	ROUTE
 };
@@ -23,7 +23,7 @@ public:
 
 private:
 	std::thread m_thread;
-	std::atomic_uchar m_state = ServerState::IDLE;
+	std::atomic_uchar m_state = static_cast<byte>(ServerState::IDLE);
 	bool m_running = false;
 	void run();
 };
