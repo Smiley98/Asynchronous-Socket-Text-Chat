@@ -2,7 +2,7 @@
 #include <iostream>
 #include <mutex>
 #define LOGGING false
-#define LOCAL_HOST false
+#define LOCAL_HOST true
 
 void ClientBase::copyIncoming(PacketBuffer& incoming, bool clear)
 {

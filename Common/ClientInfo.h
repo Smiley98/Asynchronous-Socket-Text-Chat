@@ -17,5 +17,6 @@ struct ClientDescriptor {
 //Makes deserialization less of a headache.
 struct ClientInformation {
 	Address m_address;
+	size_t m_id = 0;
 	ClientStatus m_status = ClientStatus::FREE;
 };

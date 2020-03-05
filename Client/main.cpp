@@ -36,10 +36,33 @@ void setCursor(short x, short y) {
 }
 
 void reset(unsigned char screen[rows][cols]) {
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
+	//Zero everything excluding borders.
+	for (int i = 1; i < rows - 1; i++) {
+		for (int j = 1; j < cols - 1; j++) {
 			screen[i][j] = ' ';
 		}
+	}
+}
+
+void init(unsigned char screen[rows][cols]) {
+	//Horizontal borders.
+	for (int i = 0; i < rows; i++) {
+		screen[i][0] = '|';
+		screen[i][cols - 1] = '|';
+	}
+	//Vertical borders.
+	for (int i = 0; i < cols; i++) {
+		screen[0][i] = '-';
+		screen[rows - 1][i] = '-';
+	}
+}
+
+void render(unsigned char screen[rows][cols]) {
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			printf("%c", screen[i][j]);
+		}
+		printf("\n");
 	}
 }
 
@@ -61,12 +84,13 @@ int main() {
 	//We never need more than one packet to read/write to/from because read/write operations are sequential copying.
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
 
-	Point player1{ 6, 0 };
-	Point player2{ 6, 16 };
-	Puck puck{ 6, 9, 0, -1 };
+	Puck puck{ 5, 9, -1, -1 };
+	Point player1{ 5, 1 };
+	Point player2{ 5, 15 };
+	bool isPlayerOne;// , bothConnected = false;
 
 	unsigned char screen[rows][cols];
-	reset(screen);
+	init(screen);
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -115,29 +139,37 @@ int main() {
 					break;
 				}
 			}
+
+			//Only determine the players once and only do so once we're guaranteed to have enough information.
+			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {
+				static bool once = true;
+				if (once) {
+					once = false;
+					for (const ClientInformation& clientInformation : allClientInfomration)
+						isPlayerOne = thisClientInformation.m_id <= clientInformation.m_id;
+				}
+			}
 		}
 
 		if (renderTimer.elapsed() >= 100.0) {
 			renderTimer.restart();
-			system("cls");
-			//setCursor(4, 5);
-			//printf("X");
-
+			//system("cls");//Much faster to reposition the cursor instead of clearing the screen.
+			setCursor(0, 0);
 			reset(screen);
 			screen[player1.y][player1.x] = playersymbol;
 			screen[player2.y][player2.x] = playersymbol;
 			screen[puck.position.y][puck.position.x] = pucksymbol;
 			//Player collision.
 			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
-				puck.velocity.x = -puck.velocity.x;
-				puck.velocity.y = -puck.velocity.y;
+				puck.velocity.x *= -1;
+				puck.velocity.y *= -1;
 			}
 			//Border collision.
 			short futureX = puck.position.x + puck.velocity.x;
 			short futureY = puck.position.y + puck.velocity.y;
-			if (futureX <= 0 || futureX >= cols)
+			if (futureX <= 0 || futureX >= cols - 1)
 				puck.velocity.x = -puck.velocity.x;
-			if (futureY <= 0 || futureY >= rows)
+			if (futureY <= 0 || futureY >= rows - 1)
 				puck.velocity.y = -puck.velocity.y;
 
 			//I didn't have enough time to assign players via network.
@@ -151,14 +183,10 @@ int main() {
 			}
 
 			puck.position.y += puck.velocity.y;
-			for (int i = 0; i < rows; i++) {
-				for (int j = 0; j < cols; j++) {
-					printf("%c", screen[i][j]);
-				}
-				printf("\n");
-			}
-		}
+			puck.position.x += puck.velocity.x;
 
+			render(screen);
+		}
 	}
 
 	return getchar();
