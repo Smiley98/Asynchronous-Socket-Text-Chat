@@ -62,10 +62,16 @@ bool ServerBase::recv()
 				break;
 			}
 
-			case PacketType::POSITION: {
-				Position position;
-				Packet::deserialize(packet, position);
-				printf("Server recevieved: %s %hu %hu\n", packet.typeString().c_str(), position.x, position.y);
+			case PacketType::PLAYER: {
+				Point data;
+				Packet::deserialize(packet, data);
+				printf("Server received: %s %hu %hu\n", packet.typeString().c_str(), data.x, data.y);
+				break;
+			}
+			case PacketType::PUCK: {
+				Puck data;
+				Packet::deserialize(packet, data);
+				printf("Server received: %s %hu %hu %hu %hu\n", packet.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
 				break;
 			}
 			

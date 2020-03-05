@@ -7,6 +7,9 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <Windows.h>
+#define rows 17
+#define cols 11
 
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
@@ -38,12 +41,9 @@ void appGame() {
 
 }
 
-struct Test {
-	int a = 6;
-	double garbage;
-	char moreGarbage[3];
-	int b = 9;
-};
+void setCursor(short x, short y) {
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
+}
 
 int main() {
 	Client client;
@@ -54,7 +54,7 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
-	Timer networkTimer, renderTimer, gameTimer;
+	Timer networkTimer, renderTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
@@ -62,6 +62,16 @@ int main() {
 
 	//We never need more than one packet to read/write to/from because read/write operations are sequential copying.
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
+
+	Point player1, player2;
+	Puck puck;
+
+	unsigned char screen[rows][cols];
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			screen[i][j] = ' ';
+		}
+	}
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -78,7 +88,26 @@ int main() {
 			//Packet::serialize(pos, packet);
 			//client.addOutgoing(packet);
 
+			player1.x = 69;
+			player1.y = 96;
 
+			player2.x = 420;
+			player2.y = 024;
+
+			puck.position = player1;
+			puck.velocity = player2;
+
+			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
+			Packet::serialize(player1, packet);
+			client.addOutgoing(packet);
+
+			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
+			Packet::serialize(player2, packet);
+			client.addOutgoing(packet);
+
+			packet = Packet(PacketType::PUCK, PacketMode::BROADCAST);
+			Packet::serialize(puck, packet);
+			client.addOutgoing(packet);
 
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
@@ -90,10 +119,16 @@ int main() {
 				case PacketType::GET_THIS_CLIENT_INFORMATION:
 					Packet::deserialize(i, thisClientInformation);
 					break;
-				case PacketType::POSITION: {
-					Position position;
-					Packet::deserialize(i, position);
-					printf("Client received: %s %hu %hu", i.typeString().c_str(), position.x, position.y);
+				case PacketType::PLAYER: {
+					Point data;
+					Packet::deserialize(i, data);
+					printf("Client received: %s %hu %hu\n", i.typeString().c_str(), data.x, data.y);
+					break;
+				}
+				case PacketType::PUCK: {
+					Puck data;
+					Packet::deserialize(i, data);
+					printf("Client received: %s %hu %hu %hu %hu\n", i.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
 					break;
 				}
 				default:
@@ -102,70 +137,21 @@ int main() {
 			}
 		}
 
-		//Render every 100ms as well because the console has a terrible fill rate.
 		if (renderTimer.elapsed() >= 100.0) {
 			renderTimer.restart();
 			system("cls");
+			//setCursor(4, 5);
+			//printf("X");
 
-			char clientLabel = 'A';
-			for (const ClientInformation& clientInformation : allClientInfomration) {
-				if (clientInformation.m_address == thisClientInformation.m_address)
-					continue;
-				clientInformation.m_address.print();
-
-				switch (clientInformation.m_status)
-				{
-				case ClientStatus::FREE:
-					printf("Client %c is free.\n", clientLabel);
-					break;
-				case ClientStatus::IN_CHAT:
-					printf("Client %c is in a chat.\n", clientLabel);
-					break;
-				case ClientStatus::IN_GAME:
-					printf("Client %c is in a game.\n", clientLabel);
-					break;
-				default:
-					break;
+			for (int i = 0; i < rows; i++) {
+				for (int j = 0; j < cols; j++) {
+					printf("%c", screen[i][j]);
 				}
-				clientLabel++;
+				printf("\n");
 			}
-			printf("Type /g <client name> to start a game, /c <client name> to enter chat.\n");
+			
 		}
 
-		//Run the game logic at 50fps.
-		if (gameTimer.elapsed() >= 20.0) {
-			gameTimer.restart();
-			queueMutex.lock();
-			while (inputQueue.size() > 0) {
-				//TODO: implement a mapping between client indices and labels so we can parse the clients we wish to multicast to ie A, B, C.
-				if (inputQueue.front().substr(0, 2) == "/g") {//(Put every client in a game as of now).
-					for (ClientInformation clientInformation : allClientInfomration) {
-						packet = Packet(PacketType::SET_CLIENT_STATUS, PacketMode::ONE_WAY);
-						clientInformation.m_status = ClientStatus::IN_GAME;
-						Packet::serialize(clientInformation, packet);
-						client.addOutgoing(packet);
-					}
-				}
-				inputQueue.pop();
-			}
-			queueMutex.unlock();
-
-			//Game logic:
-			switch (thisClientInformation.m_status)
-			{
-			case ClientStatus::FREE:
-				appIdle();
-				break;
-			case ClientStatus::IN_CHAT:
-				appChat();
-				break;
-			case ClientStatus::IN_GAME:
-				appGame();
-				break;
-			default:
-				break;
-			}
-		}
 	}
 
 	return getchar();
