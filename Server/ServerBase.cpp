@@ -60,6 +60,12 @@ bool ServerBase::recv()
 				m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
 				break;
 			}
+
+			case PacketType::POSITION: {
+				//Placeholder position values for now.
+				printf("RECEIVED: %s %i %i\n", packet.typeString().c_str(), 5, 5);
+				break;
+			}
 			
 			case PacketType::STRING:
 	#if LOGGING

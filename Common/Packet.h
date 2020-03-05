@@ -15,6 +15,7 @@ enum class PacketType : byte {
 	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
 
 	TEST,
+	POSITION,
 
 	COUNT
 };
@@ -194,6 +195,8 @@ inline std::string PacketBase<count>::typeString() const
 			return "generic";
 		case PacketType::STRING:
 			return "string";
+		case PacketType::POSITION:
+			return "position";
 		default:
 			return "";
 	}
