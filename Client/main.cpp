@@ -165,7 +165,6 @@ int main() {
 				}
 				printf("\n");
 			}
-			
 		}
 
 	}
