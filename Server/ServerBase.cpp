@@ -53,7 +53,7 @@ bool ServerBase::recv()
 				Packet::serialize(clientInformation, packet);
 				break;
 			}
-
+			
 			case PacketType::SET_CLIENT_STATUS: {
 				ClientInformation routedStatus;
 				Packet::deserialize(packet, routedStatus);
@@ -102,6 +102,7 @@ void ServerBase::refresh()
 		for (const auto& i : m_clients) {
 			allClientInformation[count].m_address = i.first;
 			allClientInformation[count].m_status = i.second.m_status;
+			count++;
 		}
 
 		Packet packet(PacketType::GET_ALL_CLIENT_INFORMATION, PacketMode::ONE_WAY);

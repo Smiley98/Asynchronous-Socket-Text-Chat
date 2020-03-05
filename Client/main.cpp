@@ -40,33 +40,24 @@ int main() {
 	std::vector<ClientInformation> allClientInfomration;
 	ClientInformation thisClientInformation;
 
-	//Probably best to leave these separate despite the existance of the ClientInformation structure.
-	//Address thisAddress;
-	//ClientStatus thisStatus = ClientStatus::FREE;
-
 	while (true) {
 		//Do network stuff every 0.1 seconds.
 		if (networkTimer.elapsed() >= 100.0) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
-			Packet thisAddressQuery(PacketType::THIS_CLIENT_ADDRESS, PacketMode::TWO_WAY);
-			client.addOutgoing(thisAddressQuery);
+			Packet thisClientQuery(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
+			client.addOutgoing(thisClientQuery);
 
-			//Easier in the long run to handle all packets at once rather than search for specific packets.
+			//Deserialize all incoming packets.
 			for (const Packet& packet : incoming) {
 				switch (packet.getType())
 				{
-				case PacketType::THIS_CLIENT_ADDRESS:
-					Packet::deserialize(packet, thisAddress);
+				case PacketType::GET_ALL_CLIENT_INFORMATION:
+					Packet::deserialize(packet, allClientInfomration);
 					break;
-				case PacketType::EVERY_CLIENT_ADDRESS:
-					Packet::deserialize(packet, addresses);
-					break;
-				case PacketType::THIS_CLIENT_STATUS:
-					Packet::deserialize(packet, thisStatus);
-				case PacketType::EVERY_CLIENT_STATUS:
-					Packet::deserialize(packet, statuses);
+				case PacketType::GET_THIS_CLIENT_INFORMATION:
+					Packet::deserialize(packet, thisClientInformation);
 					break;
 				default:
 					break;
@@ -80,12 +71,12 @@ int main() {
 			system("cls");
 
 			char clientLabel = 'A';
-			for (const Address& address : addresses) {
-				//if (clientInfo.first == thisClientInfo.first)
-				//	continue;
+			for (const ClientInformation& clientInformation : allClientInfomration) {
+				if (clientInformation.m_address == thisClientInformation.m_address)
+					continue;
+				clientInformation.m_address.print();
 
-				clientInfo.first.print();
-				switch (clientInfo.second.m_status)
+				switch (clientInformation.m_status)
 				{
 				case FREE:
 					printf("Client %c is free.\n", clientLabel);
@@ -109,20 +100,21 @@ int main() {
 			gameTimer.restart();
 			queueMutex.lock();
 			while (inputQueue.size() > 0) {
-				if (inputQueue.front().substr(0, 2) == "/g") {
-					Packet command(PacketType::STATUS_UPDATE, PacketMode::MULTICAST);
-					std::vector<Address> addresses(everyClientInfo.size()); 
-					for (size_t i = 0; i < addresses.size(); i++) {
-						addresses[i] = everyClientInfo[i].first;
+				//TODO: implement a mapping between client indices and labels so we can parse the clients we wish to multicast to ie A, B, C.
+				if (inputQueue.front().substr(0, 2) == "/g") {//(Put every client in a game as of now).
+					for (ClientInformation clientInformation : allClientInfomration) {
+						Packet packet(PacketType::SET_CLIENT_STATUS, PacketMode::ONE_WAY);
+						clientInformation.m_status = ClientStatus::IN_GAME;
+						Packet::serialize(clientInformation, packet);
+						client.addOutgoing(packet);
 					}
-					combine(addresses, command,);
 				}
 				inputQueue.pop();
 			}
 			queueMutex.unlock();
 
 			//Game logic:
-			switch (thisClientInfo.second.m_status)
+			switch (thisClientInformation.m_status)
 			{
 			case FREE:
 				appIdle();
