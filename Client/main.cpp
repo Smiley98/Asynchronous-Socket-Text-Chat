@@ -154,10 +154,29 @@ int main() {
 			screen[player1.y][player1.x] = playersymbol;
 			screen[player2.y][player2.x] = playersymbol;
 			screen[puck.position.y][puck.position.x] = pucksymbol;
+			//Player collision.
 			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
 				puck.velocity.x = -puck.velocity.x;
 				puck.velocity.y = -puck.velocity.y;
 			}
+			//Border collision.
+			short futureX = puck.position.x + puck.velocity.x;
+			short futureY = puck.position.y + puck.velocity.y;
+			if (futureX <= 0 || futureX >= cols)
+				puck.velocity.x = -puck.velocity.x;
+			if (futureY <= 0 || futureY >= rows)
+				puck.velocity.y = -puck.velocity.y;
+
+			//I didn't have enough time to assign players via network.
+			if (GetAsyncKeyState(VK_LEFT)) {
+				if (player1.x - 1 > 0)
+					player1.x--;
+			}
+			else if (GetAsyncKeyState(VK_RIGHT)) {
+				if (player1.x + 1 < cols - 1)
+					player1.x++;
+			}
+
 			puck.position.y += puck.velocity.y;
 			for (int i = 0; i < rows; i++) {
 				for (int j = 0; j < cols; j++) {
