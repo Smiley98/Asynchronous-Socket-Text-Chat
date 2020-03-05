@@ -13,7 +13,7 @@ struct ClientDescriptor {
 };
 
 //Makes deserialization less of a headache.
-struct RoutedStatus {
+struct ClientInformation {
 	Address m_address;
 	ClientStatus m_status;
 };

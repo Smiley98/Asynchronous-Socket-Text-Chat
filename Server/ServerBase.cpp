@@ -57,7 +57,7 @@ bool ServerBase::recv()
 			break;
 		
 		case PacketType::SET_CLIENT_STATUS: {
-			RoutedStatus routedStatus;
+			ClientInformation routedStatus;
 			Packet::deserialize(packet, routedStatus);
 			m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
 			//m_clients[routedStatus.m_address].m_active = true;//Prevent from timing out?//Probably don't want to do that.
@@ -100,22 +100,17 @@ void ServerBase::refresh()
 		}
 
 		//2. Broadcast client information.
-		std::vector<Address> addresses(m_clients.size());
-		std::vector<ClientStatus> statuses(m_clients.size());
+		std::vector<ClientInformation> allInformation(m_clients.size());
 		size_t count = 0;
 		for (const auto& i : m_clients) {
-			addresses[count] = i.first;
-			statuses[count] = i.second.m_status;
-			count++;
+			allInformation[count].m_address = i.first;
+			allInformation[count].m_status = i.second.m_status;
 		}
 
-		Packet addressPacket(PacketType::GET_EVERY_CLIENT_ADDRESS, PacketMode::ONE_WAY);
-		Packet statusPacket(PacketType::GET_EVERY_CLIENT_STATUS, PacketMode::ONE_WAY);
-		Packet::serialize(addresses, addressPacket);
-		Packet::serialize(statuses, statusPacket);
-		for (const Address& address : addresses) {
-			address.sendTo(m_socket, addressPacket);
-			address.sendTo(m_socket, statusPacket);
+		Packet packet(PacketType::GET_EVERY_CLIENT_INFORMATION, PacketMode::ONE_WAY);
+		Packet::serialize(allInformation, packet);
+		for (const ClientInformation& information : allInformation) {
+			information.m_address.sendTo(m_socket, packet);
 		}
 	}
 }
