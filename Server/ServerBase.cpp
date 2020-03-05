@@ -176,7 +176,6 @@ void ServerBase::initialize()
 {
 	Network::initialize();
 	m_socket = createSocket();
-	printf("Please enter the host name.\n");
 	m_address = createAddress(true, "");
 	bindSocket(m_socket, m_address);
 }
