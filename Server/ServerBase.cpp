@@ -1,5 +1,6 @@
 #include "ServerBase.h"
 #include "../Common/Timer.h"
+#include "../Common/NetworkObject.h"
 #include <cstdio>
 
 //Quick timeout for debug purposes. Its not costly but might as well keep it between 1-2 seconds in production.
@@ -62,8 +63,9 @@ bool ServerBase::recv()
 			}
 
 			case PacketType::POSITION: {
-				//Placeholder position values for now.
-				printf("RECEIVED: %s %i %i\n", packet.typeString().c_str(), 5, 5);
+				Position position;
+				Packet::deserialize(packet, position);
+				printf("Server recevieved: %s %hu %hu\n", packet.typeString().c_str(), position.x, position.y);
 				break;
 			}
 			

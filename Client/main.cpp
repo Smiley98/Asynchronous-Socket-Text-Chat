@@ -1,6 +1,7 @@
 #include "Client.h"
 #include "../Common/Timer.h"
 #include "../Common/ClientInfo.h"
+#include "../Common/NetworkObject.h"
 #include <iostream>
 #include <string>
 #include <queue>
@@ -71,13 +72,13 @@ int main() {
 			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
 
-			//Initialize multicast data!
-			std::vector<Address> addresses(allClientInfomration.size());
-			for (size_t i = 0; i < addresses.size(); i++)
-				addresses[i] = allClientInfomration[i].m_address;
-			Test test;
-			packet = combine(addresses, test, PacketType::TEST);
-			client.addOutgoing(packet);
+			//Works
+			//packet = Packet(PacketType::POSITION, PacketMode::BROADCAST);//Temporarily broadcast for testing.
+			//Position pos{ 6, 9 };
+			//Packet::serialize(pos, packet);
+			//client.addOutgoing(packet);
+
+
 
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
@@ -89,12 +90,10 @@ int main() {
 				case PacketType::GET_THIS_CLIENT_INFORMATION:
 					Packet::deserialize(i, thisClientInformation);
 					break;
-				case PacketType::TEST: {
-					Test test;
-					test.a = 1;
-					test.b = 2;
-					Packet::deserialize(i, test);
-					printf("Test: %i %i\n", test.a, test.b);
+				case PacketType::POSITION: {
+					Position position;
+					Packet::deserialize(i, position);
+					printf("Client received: %s %hu %hu", i.typeString().c_str(), position.x, position.y);
 					break;
 				}
 				default:

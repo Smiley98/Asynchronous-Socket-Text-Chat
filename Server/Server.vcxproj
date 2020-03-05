@@ -151,6 +151,7 @@
     <ClInclude Include="..\Common\Address.h" />
     <ClInclude Include="..\Common\ClientInfo.h" />
     <ClInclude Include="..\Common\Network.h" />
+    <ClInclude Include="..\Common\NetworkObject.h" />
     <ClInclude Include="..\Common\Packet.h" />
     <ClInclude Include="..\Common\Timer.h" />
     <ClInclude Include="Server.h" />

@@ -53,5 +53,8 @@
     <ClInclude Include="ClientBase.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\NetworkObject.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

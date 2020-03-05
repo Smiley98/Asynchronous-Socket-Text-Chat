@@ -53,5 +53,8 @@
     <ClInclude Include="ServerBase.h">
       <Filter>Server</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\NetworkObject.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
