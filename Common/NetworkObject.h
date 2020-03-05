@@ -1,7 +1,7 @@
 #pragma once
 struct Point {
-    unsigned short x;
-    unsigned short y;
+    short x;
+    short y;
 };
 
 struct Puck {

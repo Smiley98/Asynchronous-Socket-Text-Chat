@@ -10,6 +10,8 @@
 #include <Windows.h>
 #define rows 17
 #define cols 11
+#define playersymbol 'X'
+#define pucksymbol 'O'
 
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
@@ -45,6 +47,14 @@ void setCursor(short x, short y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
 }
 
+void reset(unsigned char screen[rows][cols]) {
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			screen[i][j] = ' ';
+		}
+	}
+}
+
 int main() {
 	Client client;
 	client.start();
@@ -63,15 +73,17 @@ int main() {
 	//We never need more than one packet to read/write to/from because read/write operations are sequential copying.
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
 
-	Point player1, player2;
-	Puck puck;
+	Point player1{ 6, 0 };
+	Point player2{ 6, 16 };
+	Puck puck{ 6, 9, 0, -1 };
 
 	unsigned char screen[rows][cols];
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-			screen[i][j] = ' ';
-		}
-	}
+	reset(screen);
+	//for (int i = 0; i < rows; i++) {
+	//	for (int j = 0; j < cols; j++) {
+	//		screen[i][j] = ' ';
+	//	}
+	//}
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -82,20 +94,15 @@ int main() {
 			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
 
-			//Works
-			//packet = Packet(PacketType::POSITION, PacketMode::BROADCAST);//Temporarily broadcast for testing.
-			//Position pos{ 6, 9 };
-			//Packet::serialize(pos, packet);
-			//client.addOutgoing(packet);
-
-			player1.x = 69;
-			player1.y = 96;
-
-			player2.x = 420;
-			player2.y = 024;
-
-			puck.position = player1;
-			puck.velocity = player2;
+			//Dummy values for testing, works.
+			//player1.x = 69;
+			//player1.y = 96;
+			//
+			//player2.x = 420;
+			//player2.y = 024;
+			//
+			//puck.position = player1;
+			//puck.velocity = player2;
 
 			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
 			Packet::serialize(player1, packet);
@@ -122,13 +129,13 @@ int main() {
 				case PacketType::PLAYER: {
 					Point data;
 					Packet::deserialize(i, data);
-					printf("Client received: %s %hu %hu\n", i.typeString().c_str(), data.x, data.y);
+					printf("Client received: %s %h %h\n", i.typeString().c_str(), data.x, data.y);
 					break;
 				}
 				case PacketType::PUCK: {
 					Puck data;
 					Packet::deserialize(i, data);
-					printf("Client received: %s %hu %hu %hu %hu\n", i.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
+					printf("Client received: %s %h %h %h %h\n", i.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
 					break;
 				}
 				default:
@@ -143,6 +150,15 @@ int main() {
 			//setCursor(4, 5);
 			//printf("X");
 
+			reset(screen);
+			screen[player1.y][player1.x] = playersymbol;
+			screen[player2.y][player2.x] = playersymbol;
+			screen[puck.position.y][puck.position.x] = pucksymbol;
+			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
+				puck.velocity.x = -puck.velocity.x;
+				puck.velocity.y = -puck.velocity.y;
+			}
+			puck.position.y += puck.velocity.y;
 			for (int i = 0; i < rows; i++) {
 				for (int j = 0; j < cols; j++) {
 					printf("%c", screen[i][j]);
