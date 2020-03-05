@@ -44,6 +44,9 @@ bool ServerBase::recv()
 	Address address;
 	if (recvfrom(m_socket, packet.signedBytes(), packet.size(), 0, reinterpret_cast<SOCKADDR*>(&address.m_sai), &address.m_length) != SOCKET_ERROR) {
 		m_clients[address].m_active = true;
+		//0 means new client so assign it a unique id!
+		if (m_clients[address].m_id == 0)
+			m_clients[address].m_id = ++ClientDescriptor::s_id;
 
 		switch (packet.getType())
 		{

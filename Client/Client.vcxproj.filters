@@ -30,6 +30,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Client</Filter>
     </ClCompile>
+    <ClCompile Include="..\Common\ClientInfo.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\Timer.h">

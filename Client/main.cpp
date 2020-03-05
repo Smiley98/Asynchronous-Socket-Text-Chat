@@ -31,18 +31,6 @@ Packet combine(const std::vector<Address>& addresses, const T& object, PacketTyp
 	return packet;
 }
 
-void appIdle() {
-
-}
-
-void appChat() {
-
-}
-
-void appGame() {
-
-}
-
 void setCursor(short x, short y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
 }
@@ -79,11 +67,6 @@ int main() {
 
 	unsigned char screen[rows][cols];
 	reset(screen);
-	//for (int i = 0; i < rows; i++) {
-	//	for (int j = 0; j < cols; j++) {
-	//		screen[i][j] = ' ';
-	//	}
-	//}
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -93,16 +76,6 @@ int main() {
 
 			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
-
-			//Dummy values for testing, works.
-			//player1.x = 69;
-			//player1.y = 96;
-			//
-			//player2.x = 420;
-			//player2.y = 024;
-			//
-			//puck.position = player1;
-			//puck.velocity = player2;
 
 			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
 			Packet::serialize(player1, packet);
