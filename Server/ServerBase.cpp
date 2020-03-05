@@ -2,8 +2,6 @@
 #include "../Common/Timer.h"
 #include "../Common/NetworkObject.h"
 #include <iostream>
-
-//Quick timeout for debug purposes. Its not costly but might as well keep it between 1-2 seconds in production.
 #define TIMEOUT 100.0
 #define LOGGING true
 
@@ -179,9 +177,6 @@ void ServerBase::initialize()
 	Network::initialize();
 	m_socket = createSocket();
 	printf("Please enter the host name.\n");
-	//std::string host;
-	//std::getline(std::cin, host);
-	//m_address = createAddress(true, host, "8888");
 	m_address = createAddress(true, "");
 	bindSocket(m_socket, m_address);
 }

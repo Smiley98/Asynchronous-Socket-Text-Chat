@@ -1,6 +1,8 @@
 #include "ClientBase.h"
+#include <iostream>
 #include <mutex>
 #define LOGGING false
+#define LOCAL_HOST false
 
 void ClientBase::copyIncoming(PacketBuffer& incoming, bool clear)
 {
@@ -70,7 +72,14 @@ void ClientBase::initialize()
 {
 	Network::initialize();
 	m_socket = createSocket();
+#if LOCAL_HOST
 	m_address = createAddress();
+#else
+	printf("Please enter the host address.\n");
+	std::string host;
+	std::getline(std::cin, host);
+	m_address = createAddress(false, host);
+#endif
 }
 
 void ClientBase::shutdown()
