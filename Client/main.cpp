@@ -37,10 +37,12 @@ int main() {
 	Timer networkTimer, renderTimer, gameTimer;
 	PacketBuffer incoming;
 
-	std::vector<Address> addresses;
-	std::vector<ClientStatus> statuses;
-	Address thisAddress;
-	ClientStatus thisStatus = ClientStatus::FREE;
+	std::vector<ClientInformation> allClientInfomration;
+	ClientInformation thisClientInformation;
+
+	//Probably best to leave these separate despite the existance of the ClientInformation structure.
+	//Address thisAddress;
+	//ClientStatus thisStatus = ClientStatus::FREE;
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.

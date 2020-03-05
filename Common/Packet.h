@@ -10,13 +10,8 @@ enum class PacketType : byte {
 	GENERIC,
 	STRING,
 
-	//GET_EVERY_CLIENT_ADDRESS,	//Broadcasted periodically.
-	//GET_EVERY_CLIENT_STATUS,	//Broadcasted periodically.
-	GET_EVERY_CLIENT_INFORMATION,
-
-	GET_THIS_CLIENT_ADDRESS,	//Queried by clients, handled in server receive.
-	GET_THIS_CLIENT_STATUS,		//Queried by clients, handled in server receive.
-
+	GET_ALL_CLIENT_INFORMATION,
+	GET_THIS_CLIENT_INFORMATION,
 	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
 
 	COUNT

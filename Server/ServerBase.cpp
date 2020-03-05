@@ -48,29 +48,26 @@ bool ServerBase::recv()
 
 		switch (packet.getType())
 		{
-		case PacketType::GET_THIS_CLIENT_ADDRESS:
-			Packet::serialize(address, packet);
-			break;
+			case PacketType::GET_THIS_CLIENT_INFORMATION: {
+				ClientInformation clientInformation{ address, m_clients[address].m_status };
+				Packet::serialize(clientInformation, packet);
+				break;
+			}
 
-		case PacketType::GET_THIS_CLIENT_STATUS:
-			Packet::serialize(m_clients[address].m_status, packet);
-			break;
-		
-		case PacketType::SET_CLIENT_STATUS: {
-			ClientInformation routedStatus;
-			Packet::deserialize(packet, routedStatus);
-			m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
-			//m_clients[routedStatus.m_address].m_active = true;//Prevent from timing out?//Probably don't want to do that.
-			break;
-		}
-		
-		case PacketType::STRING:
-#if LOGGING
-			printf("String packet: %s\n", packet.toString().c_str());
-#endif
-			break;
-		default:
-			break;
+			case PacketType::SET_CLIENT_STATUS: {
+				ClientInformation routedStatus;
+				Packet::deserialize(packet, routedStatus);
+				m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
+				break;
+			}
+			
+			case PacketType::STRING:
+	#if LOGGING
+				printf("String packet: %s\n", packet.toString().c_str());
+	#endif
+				break;
+			default:
+				break;
 		}
 
 		//No need to append the packet if its not meant to be routed.
@@ -100,17 +97,17 @@ void ServerBase::refresh()
 		}
 
 		//2. Broadcast client information.
-		std::vector<ClientInformation> allInformation(m_clients.size());
+		std::vector<ClientInformation> allClientInformation(m_clients.size());
 		size_t count = 0;
 		for (const auto& i : m_clients) {
-			allInformation[count].m_address = i.first;
-			allInformation[count].m_status = i.second.m_status;
+			allClientInformation[count].m_address = i.first;
+			allClientInformation[count].m_status = i.second.m_status;
 		}
 
-		Packet packet(PacketType::GET_EVERY_CLIENT_INFORMATION, PacketMode::ONE_WAY);
-		Packet::serialize(allInformation, packet);
-		for (const ClientInformation& information : allInformation) {
-			information.m_address.sendTo(m_socket, packet);
+		Packet packet(PacketType::GET_ALL_CLIENT_INFORMATION, PacketMode::ONE_WAY);
+		Packet::serialize(allClientInformation, packet);
+		for (const ClientInformation& clientInformation : allClientInformation) {
+			clientInformation.m_address.sendTo(m_socket, packet);
 		}
 	}
 }
