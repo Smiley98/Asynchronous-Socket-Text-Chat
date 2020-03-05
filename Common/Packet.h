@@ -9,9 +9,15 @@ enum class PacketType : byte {
 	NONE = 0,
 	GENERIC,
 	STRING,
-	THIS_CLIENT_INFORMATION,
-	EVERY_CLIENT_INFORMATION,
-	STATUS_UPDATE,
+
+	GET_EVERY_CLIENT_ADDRESS,	//Broadcasted periodically.
+	GET_EVERY_CLIENT_STATUS,	//Broadcasted periodically.
+
+	GET_THIS_CLIENT_ADDRESS,	//Queried by clients, handled in server receive.
+	GET_THIS_CLIENT_STATUS,		//Queried by clients, handled in server receive.
+
+	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
+
 	COUNT
 };
 
@@ -61,7 +67,7 @@ public:
 
 	static constexpr size_t size();
 	static constexpr size_t bufferSize();
-	static constexpr size_t metadata();
+	static constexpr size_t headerSize();
 
 	template<typename T>
 	static void serialize(const T& input, PacketBase<count>& output) {
@@ -243,12 +249,12 @@ size_t constexpr PacketBase<count>::size()
 
 template<size_t count>
 size_t constexpr PacketBase<count>::bufferSize()
-{	//(Same as returning <count>).
-	return count;//m_internal.m_buffer.size();
+{
+	return count;
 }
 
 template<size_t count>
-size_t constexpr PacketBase<count>::metadata()
+size_t constexpr PacketBase<count>::headerSize()
 {
 	return size() - bufferSize();
 }

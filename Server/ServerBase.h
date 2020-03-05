@@ -50,8 +50,7 @@ protected:
 	void shutdown();
 
 private:
-	std::unordered_map<Address, ClientDesc, AddressHash> m_clients;
-	//std::unordered_map<ULONG, Address> m_hash;//Mapping of address hash values to addresses. Could remove the need to send entire addresses.
+	std::unordered_map<Address, ClientDescriptor, AddressHash> m_clients;
 	ADDRINFO* m_address = NULL;
 	SOCKET m_socket = INVALID_SOCKET;
 };

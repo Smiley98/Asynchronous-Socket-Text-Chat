@@ -1,6 +1,5 @@
 #pragma once
 #include "Address.h"
-#include <utility>
 
 enum ClientStatus : byte {
 	FREE,
@@ -8,15 +7,13 @@ enum ClientStatus : byte {
 	IN_GAME
 };
 
-//Client descriptor.
-struct ClientDesc {
+struct ClientDescriptor {
 	ClientStatus m_status = ClientStatus::FREE;
 	bool m_active = false;
 };
 
-typedef std::pair<Address, ClientDesc> ClientInfo;
-
-//struct ClientInfo {
-//	Address m_address;
-//	ClientDesc m_clientDesc;
-//};
+//Makes deserialization less of a headache.
+struct RoutedStatus {
+	Address m_address;
+	ClientStatus m_status;
+};

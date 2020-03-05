@@ -48,23 +48,32 @@ bool ServerBase::recv()
 
 		switch (packet.getType())
 		{
-		case PacketType::STATUS_UPDATE:
-			m_clients[address].m_status = static_cast<ClientStatus>(packet.buffer()[0]);
+		case PacketType::GET_THIS_CLIENT_ADDRESS:
+			Packet::serialize(address, packet);
 			break;
+
+		case PacketType::GET_THIS_CLIENT_STATUS:
+			Packet::serialize(m_clients[address].m_status, packet);
+			break;
+		
+		case PacketType::SET_CLIENT_STATUS: {
+			RoutedStatus routedStatus;
+			Packet::deserialize(packet, routedStatus);
+			m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
+			//m_clients[routedStatus.m_address].m_active = true;//Prevent from timing out?//Probably don't want to do that.
+			break;
+		}
+		
 		case PacketType::STRING:
 #if LOGGING
 			printf("String packet: %s\n", packet.toString().c_str());
 #endif
 			break;
-		case PacketType::THIS_CLIENT_INFORMATION:
-			ClientInfo clientInfo = std::make_pair(address, m_clients[address]);
-			Packet::serialize(clientInfo, packet);
-			break;
 		default:
 			break;
 		}
 
-		//No need to append packets if they're not meant to be routed.
+		//No need to append the packet if its not meant to be routed.
 		if (packet.getMode() != PacketMode::ONE_WAY)
 			m_incoming.push_back({ packet, address });
 
@@ -90,18 +99,24 @@ void ServerBase::refresh()
 				itr = m_clients.erase(itr);
 		}
 
-		//2. Broadcast a list of active clients (clients are responsible from removing themselves from this list).
-		std::vector<ClientInfo> everyClientInformation(m_clients.size());
+		//2. Broadcast client information.
+		std::vector<Address> addresses(m_clients.size());
+		std::vector<ClientStatus> statuses(m_clients.size());
 		size_t count = 0;
 		for (const auto& i : m_clients) {
-			everyClientInformation[count] = i;
+			addresses[count] = i.first;
+			statuses[count] = i.second.m_status;
 			count++;
 		}
 
-		Packet packet(PacketType::EVERY_CLIENT_INFORMATION, PacketMode::ONE_WAY);
-		Packet::serialize(everyClientInformation, packet);
-		for (const ClientInfo& clientInfo : everyClientInformation)
-			clientInfo.first.sendTo(m_socket, packet);
+		Packet addressPacket(PacketType::GET_EVERY_CLIENT_ADDRESS, PacketMode::ONE_WAY);
+		Packet statusPacket(PacketType::GET_EVERY_CLIENT_STATUS, PacketMode::ONE_WAY);
+		Packet::serialize(addresses, addressPacket);
+		Packet::serialize(statuses, statusPacket);
+		for (const Address& address : addresses) {
+			address.sendTo(m_socket, addressPacket);
+			address.sendTo(m_socket, statusPacket);
+		}
 	}
 }
 

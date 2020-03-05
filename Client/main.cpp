@@ -34,12 +34,13 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
-	Timer networkTimer, renderTimer, inputTimer;
+	Timer networkTimer, renderTimer, gameTimer;
 	PacketBuffer incoming;
 
-	//Stuff that may be accessed outside the packet deciphering switch statement:
-	std::vector<ClientInfo> everyClientInfo;
-	ClientInfo thisClientInfo;
+	std::vector<Address> addresses;
+	std::vector<ClientStatus> statuses;
+	Address thisAddress;
+	ClientStatus thisStatus = ClientStatus::FREE;
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -47,24 +48,23 @@ int main() {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
-			Packet thisClientQuery(PacketType::THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
-			client.addOutgoing(thisClientQuery);
+			Packet thisAddressQuery(PacketType::THIS_CLIENT_ADDRESS, PacketMode::TWO_WAY);
+			client.addOutgoing(thisAddressQuery);
 
 			//Easier in the long run to handle all packets at once rather than search for specific packets.
 			for (const Packet& packet : incoming) {
 				switch (packet.getType())
 				{
-				case PacketType::GENERIC:
+				case PacketType::THIS_CLIENT_ADDRESS:
+					Packet::deserialize(packet, thisAddress);
 					break;
-				case PacketType::STRING:
+				case PacketType::EVERY_CLIENT_ADDRESS:
+					Packet::deserialize(packet, addresses);
 					break;
-				case PacketType::STATUS_UPDATE:
-					break;
-				case PacketType::THIS_CLIENT_INFORMATION:
-					Packet::deserialize(packet, thisClientInfo);
-					break;
-				case PacketType::EVERY_CLIENT_INFORMATION:
-					Packet::deserialize(packet, everyClientInfo);
+				case PacketType::THIS_CLIENT_STATUS:
+					Packet::deserialize(packet, thisStatus);
+				case PacketType::EVERY_CLIENT_STATUS:
+					Packet::deserialize(packet, statuses);
 					break;
 				default:
 					break;
@@ -78,10 +78,9 @@ int main() {
 			system("cls");
 
 			char clientLabel = 'A';
-			for (const ClientInfo& clientInfo : everyClientInfo) {
-				//Skip over self by comparing addresses (the only thing guaranteed to be unique per client).
-				if (clientInfo.first == thisClientInfo.first)
-					continue;
+			for (const Address& address : addresses) {
+				//if (clientInfo.first == thisClientInfo.first)
+				//	continue;
 
 				clientInfo.first.print();
 				switch (clientInfo.second.m_status)
@@ -100,28 +99,41 @@ int main() {
 				}
 				clientLabel++;
 			}
-
 			printf("Type /g <client name> to start a game, /c <client name> to enter chat.\n");
 		}
 
-		queueMutex.lock();
-		while (inputQueue.size() > 0) {
-			inputQueue.front();
-			inputQueue.pop();
-		}
-		queueMutex.unlock();
+		//Run the game logic at 50fps.
+		if (gameTimer.elapsed() >= 20.0) {
+			gameTimer.restart();
+			queueMutex.lock();
+			while (inputQueue.size() > 0) {
+				if (inputQueue.front().substr(0, 2) == "/g") {
+					Packet command(PacketType::STATUS_UPDATE, PacketMode::MULTICAST);
+					std::vector<Address> addresses(everyClientInfo.size()); 
+					for (size_t i = 0; i < addresses.size(); i++) {
+						addresses[i] = everyClientInfo[i].first;
+					}
+					combine(addresses, command,);
+				}
+				inputQueue.pop();
+			}
+			queueMutex.unlock();
 
-		//Game logic:
-		switch (thisClientInfo.second.m_status)
-		{
-		case FREE:
-			break;
-		case IN_CHAT:
-			break;
-		case IN_GAME:
-			break;
-		default:
-			break;
+			//Game logic:
+			switch (thisClientInfo.second.m_status)
+			{
+			case FREE:
+				appIdle();
+				break;
+			case IN_CHAT:
+				appChat();
+				break;
+			case IN_GAME:
+				appGame();
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
