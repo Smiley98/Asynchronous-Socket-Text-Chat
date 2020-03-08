@@ -73,29 +73,33 @@ public:
 
 	template<typename T>
 	static void serialize(const T& input, PacketBase<count>& output) {
-		static_assert(1 + sizeof(T) <= PacketBase<count>::bufferSize());
+		static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
 		output.buffer()[0] = 1;
-		output.write(&input, sizeof(T), 1);
+		output.write(&input, sizeof(T), sizeof(short));
 	}
 
 	template<typename T>
 	static void deserialize(const PacketBase<count>& input, T& output) {
-		static_assert(1 + sizeof(T) <= PacketBase<count>::bufferSize());
-		input.read(&output, sizeof(T), 1);
+		static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
+		input.read(&output, sizeof(T), sizeof(short));
 	}
 
 	template<typename T>
 	static void serialize(const std::vector<T>& input, PacketBase<count>& output) {
-		assert(1 + sizeof(T) * input.size() <= PacketBase<count>::bufferSize());
-		output.buffer()[0] = input.size();
-		output.write(input.data(), sizeof(T) * input.size(), 1);
+		const unsigned short objectCount = input.size();
+		assert(sizeof(short) + sizeof(T) * objectCount <= PacketBase<count>::bufferSize());
+		output.write(&objectCount, sizeof(short));
+		output.write(input.data(), sizeof(T) * objectCount, sizeof(short));
 	}
 
 	template<typename T>
 	static void deserialize(const PacketBase<count>& input, std::vector<T>& output) {
-		assert(1 + sizeof(T) * input.buffer()[0] <= PacketBase<count>::bufferSize());
-		output.resize(input.buffer()[0]);
-		input.read(output.data(), sizeof(T) * output.size(), 1);
+		unsigned short objectCount = 0;
+		input.read(&objectCount, sizeof(short));
+		assert(objectCount > 0);
+		assert(sizeof(short) + sizeof(T) * objectCount <= PacketBase<count>::bufferSize());
+		output.resize(objectCount);
+		input.read(output.data(), sizeof(T) * objectCount, sizeof(short));
 	}
 
 private:

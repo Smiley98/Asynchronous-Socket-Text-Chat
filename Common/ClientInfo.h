@@ -14,9 +14,8 @@ struct ClientDescriptor {
 	bool m_active = false;
 };
 
-//Makes deserialization less of a headache.
 struct ClientInformation {
 	Address m_address;
-	size_t m_id = 0;
 	ClientStatus m_status = ClientStatus::FREE;
+	size_t m_id = 0;
 };
