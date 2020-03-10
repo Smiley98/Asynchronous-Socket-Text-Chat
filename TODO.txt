@@ -1,0 +1,10 @@
+Just like anything else template related, you're taking a risk!
+Although it won't really cause an error, its up to the programmer to call the right templated function.
+No need to make an ultra-fancy protocol, just decide between the multicast and non-multicast protocols, and single vs multiple objects.
+
+Technically we could make a zip and extract function (or join and separate) that appends data of type V to a packet containing data of type U to reuse existing code.
+Issue with that is we'd need an elaborate protocol for separation ie (typeCount, type1Count, type1Size, type1Data, type2Count, type2Size, type2Data etc).
+Would start looking like Dunia where there's macros to make callback functions with 1, 2, 3, 4, 5, 6, 7, 8 and 9 templated arguments :'D
+
+Currently not worth it to make this elaborate protocol because the only current use case is concatenating addresses for multicasting. Also can't even lift existing serialize/deserialize code into multi-serialize/deserialize code because deserialize uses raw bytes rather than templated objects (because there's no server-side mechanism to deduce the type and implementing said mechanism isn't practical).
+TLDR I don't have the most future-proof serialize/deserialize algorithms but based on the current needs of the library its appropriate.

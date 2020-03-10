@@ -59,5 +59,8 @@
     <ClInclude Include="..\Common\NetworkObject.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\Multicast.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

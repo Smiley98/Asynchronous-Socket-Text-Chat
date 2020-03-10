@@ -17,7 +17,6 @@
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
 
-
 void setCursor(short x, short y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
 }
@@ -59,31 +58,7 @@ struct Meme {
 	int b;
 };
 
-void test() {
-	Meme m1, m2;
-	m1.a = 3;
-	m1.b = 4;
-	m2.a = 5;
-	m2.b = 6;
-	Address a1, a2;
-	std::vector<Address> addresses{ a1, a2 };
-	std::vector<Meme> objects{ m1, m2 };
-
-	//1. Multi-serialize to combine the objects with the addresses.
-	Packet input = Multicast::serialize(addresses, objects, PacketType::PLAYER);
-
-	//2. Multi-deserialize (on the server) so we can send the desired packet to the array of addresses.
-	MulticastPacket output = Multicast::deserialize(input);
-
-	//3. Receive the regular packet and deserialize it.
-	Meme m3;
-	//(Its up to the programmer to call the correct function based on how many objects should be deserialized).
-	Packet::deserialize(output.m_packet, m3);
-	int stop;
-}
-
 int main() {
-	test();
 
 	Client client;
 	client.start();
@@ -139,7 +114,7 @@ int main() {
 				{
 				case PacketType::GET_ALL_CLIENT_INFORMATION: {
 					Packet::deserialize(i, allClientInfomration);
-					//Copy addresses for convenience when multicasting.
+					//Copy to addresses for convenience when multicasting.
 					addresses.resize(allClientInfomration.size());
 					for (size_t i = 0; i < addresses.size(); i++)
 						addresses[i] = allClientInfomration[i].m_address;
@@ -174,7 +149,10 @@ int main() {
 			Meme m;
 			m.a = 1;
 			m.b = 2;
-			client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));
+			std::vector<Meme> heap{ m };
+			//client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));//Try not to break the compiler for the moment xD.
+			if(addresses.size() > 0)
+				client.addOutgoing(Multicast::serialize(addresses, heap, PacketType::TEST));
 
 			//Only determine the players once and only do so once we're guaranteed to have enough information.
 			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {

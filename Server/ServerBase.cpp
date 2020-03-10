@@ -1,6 +1,7 @@
 #include "ServerBase.h"
 #include "../Common/Timer.h"
 #include "../Common/NetworkObject.h"
+#include "../Common/Multicast.h"
 #include <iostream>
 #define TIMEOUT 100.0
 #define LOGGING true
@@ -134,25 +135,20 @@ void ServerBase::transfer()
 	m_incoming.clear();
 }
 
+bool ServerBase::broadcast(const Packet& packet)
+{
+	bool result = true;
+	for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++)
+		result &= itr->first.sendTo(m_socket, packet);
+	return result;
+}
+
 bool ServerBase::multicast(const Packet& packet)
 {
-	//Extract addresses and information from packet, then send information to all addresses.
-	std::vector<Address> addresses;
-	Packet::deserialize(packet, addresses);
-
-	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
-	const size_t dataSize = packet.buffer()[dataStart];
-
-	//Yuck xD.
-	Packet outgoing(static_cast<PacketType>(packet.buffer()[dataStart + 1]), static_cast<PacketMode>(packet.buffer()[dataStart + 2]));
-	//Assume that we're writing a single object (deserialization expects the object count followed by the data).
-	outgoing.buffer()[0] = 1;
-	//Also yuck.
-	packet.read(&outgoing.buffer()[1], dataSize - Packet::headerSize(), dataStart + Packet::headerSize() + 1);
-
-	bool result = false;
-	for (const Address& address : addresses)
-		result &= address.sendTo(m_socket, outgoing);
+	bool result = true;
+	MulticastPacket multicastPacket = Multicast::deserialize(packet);
+	for (const Address& address : multicastPacket.m_addresses)
+		result &= address.sendTo(m_socket, multicastPacket.m_packet);
 	return result;
 }
 
@@ -164,14 +160,6 @@ bool ServerBase::reroute(const Packet& packet, const Address& exemptClient)
 			continue;
 		result &= itr->first.sendTo(m_socket, packet);
 	}
-	return result;
-}
-
-bool ServerBase::broadcast(const Packet& packet)
-{
-	bool result = true;
-	for (auto itr = m_clients.begin(); itr != m_clients.end(); itr++)
-		result &= itr->first.sendTo(m_socket, packet);
 	return result;
 }
 

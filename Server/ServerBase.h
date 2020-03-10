@@ -34,14 +34,14 @@ protected:
 	//Reassigns outcoming to incoming and clears incoming.
 	void transfer();
 
+	//Send the packet to all clients.
+	bool broadcast(const Packet& packet);
+
 	//Sends the packet to all specified clients (based on the packet internals).
 	bool multicast(const Packet& packet);
 
 	//Send the packet to every client except for the passed in client (which is usually the original sender).
 	bool reroute(const Packet& packet, const Address& exemptAddress);
-
-	//Send the packet to all clients.
-	bool broadcast(const Packet& packet);
 
 	//Initialize Winsock2 and setup a server socket.
 	void initialize();
