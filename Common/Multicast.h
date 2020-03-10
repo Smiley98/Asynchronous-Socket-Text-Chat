@@ -7,12 +7,6 @@ struct MulticastPacket {
 };
 
 namespace Multicast {
-	//Forms a packet containing all addresses at the front followed by metadata and an object.
-	template<typename T>
-	Packet serialize(const std::vector<Address>& addresses, const T& object, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
-		std::vector<T> objects{ object };
-		return Multicast::serialize(addresses, objects, packetType, packetMode);
-	}
 
 	//Forms a packet containing all addresses at the front followed by metadata and objects.
 	template<typename T>
@@ -44,6 +38,13 @@ namespace Multicast {
 		packet.write(objects.data(), objectSize * objectCount, dataIndex);
 
 		return packet;
+	}
+
+	//Forms a packet containing all addresses at the front followed by metadata and an object.
+	template<typename T>
+	Packet serialize(const std::vector<Address>& addresses, const T& object, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
+		std::vector<T> objects{ object };
+		return Multicast::serialize(addresses, objects, packetType, packetMode);
 	}
 
 	MulticastPacket deserialize(const Packet& packet) {

@@ -149,10 +149,8 @@ int main() {
 			Meme m;
 			m.a = 1;
 			m.b = 2;
-			std::vector<Meme> heap{ m };
-			//client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));//Try not to break the compiler for the moment xD.
-			if(addresses.size() > 0)
-				client.addOutgoing(Multicast::serialize(addresses, heap, PacketType::TEST));
+			if (addresses.size() > 0)
+				client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));
 
 			//Only determine the players once and only do so once we're guaranteed to have enough information.
 			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {
