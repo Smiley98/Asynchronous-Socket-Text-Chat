@@ -52,14 +52,7 @@ void render(unsigned char screen[rows][cols]) {
 	}
 }
 
-struct Meme {
-	int a;
-	char garbage[3];
-	int b;
-};
-
 int main() {
-
 	Client client;
 	client.start();
 	client.setState(ClientState::CONSUME);
@@ -136,21 +129,13 @@ int main() {
 					break;
 				}
 				case PacketType::TEST: {
-					Meme meme;
-					Packet::deserialize(i, meme);
-					printf("Test received: %i %i\n", meme.a, meme.b);
+					//Packet::deserialize(i, );
 					break;
 				}
 				default:
 					break;
 				}
 			}
-
-			Meme m;
-			m.a = 1;
-			m.b = 2;
-			if (addresses.size() > 0)
-				client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));
 
 			//Only determine the players once and only do so once we're guaranteed to have enough information.
 			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {
