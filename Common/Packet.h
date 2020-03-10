@@ -17,6 +17,9 @@ enum class PacketType : byte {
 	PUCK,
 	PLAYER,
 
+	//Used whenever I need to test a new protocol feature.
+	TEST,
+
 	COUNT
 };
 

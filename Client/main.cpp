@@ -2,6 +2,7 @@
 #include "../Common/Timer.h"
 #include "../Common/ClientInfo.h"
 #include "../Common/NetworkObject.h"
+#include "../Common/Multicast.h"
 #include <iostream>
 #include <string>
 #include <queue>
@@ -16,125 +17,6 @@
 //Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
 
-//template<typename T>
-//Packet combine(const std::vector<Address>& addresses, const T& object, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
-//	//The packet type at the start doesn't matter because the data after the addresses is what's multicasted.
-//	Packet packet(PacketType::GENERIC, PacketMode::MULTICAST);
-//	Packet::serialize(addresses, packet);
-//	const size_t dataStart = 1 + sizeof(Address) * addresses.size();
-//	//Write the number of trailing bytes.
-//	packet.buffer()[dataStart] = sizeof(T) + Packet::headerSize();
-//	packet.buffer()[dataStart + 1] = static_cast<byte>(packetType);
-//	packet.buffer()[dataStart + 2] = static_cast<byte>(packetMode);
-//	//After trailing bytes + metadata, write the object.
-//	packet.write(&object, sizeof(object), dataStart + Packet::headerSize() + 1);
-//	return packet;
-//}
-
-struct MulticastPacket {
-	Packet m_packet;
-	std::vector<Address> m_addresses;
-};
-
-//Forms a packet containing all addresses at the front followed by metadata and an object.
-template<typename T>
-Packet serialize(const std::vector<Address>& addresses, const T& object, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
-	//1. Write the addresses to a multicasted packet.
-	assert(addresses.size()) > 0;
-	Packet packet(PacketType::GENERIC, PacketMode::MULTICAST);
-	Packet::serialize(addresses, packet);
-	size_t dataIndex = sizeof(short) + sizeof(Address) * addresses.size();
-
-	//2. Write the object count.
-	const short objectCount = 1;
-	packet.write(&objectCount, sizeof(short), dataStart);
-	dataIndex += sizeof(short);
-
-	//3. Write the size of a single object.
-	const short objectSize = sizeof(T);
-	packet.write(&objectSize, sizeof(short), dataIndex);
-	dataIndex += sizeof(short);
-
-	//4. Write the metadata.
-	packet.write(&packetType, sizeof(PacketType), dataIndex);
-	dataIndex += sizeof(PacketType);
-	packet.write(&packetMode, sizeof(PacketMode), dataIndex);
-	dataIndex += sizeof(PacketMode);
-
-	//5. Write the raw object.
-	packet.write(&object, sizeof(object), dataIndex);
-	
-	return packet;
-}
-
-//Forms a packet containing all addresses at the front followed by metadata and objects.
-template<typename T>
-Packet serialize(const std::vector<Address>& addresses, const std::vector<T>& objects, PacketType packetType, PacketMode packetMode = PacketMode::ONE_WAY) {
-	//1. Write the addresses to a multicasted packet.
-	assert(addresses.size()) > 0;
-	Packet packet(PacketType::GENERIC, PacketMode::MULTICAST);
-	Packet::serialize(addresses, packet);
-	size_t dataIndex = sizeof(short) + sizeof(Address) * addresses.size();
-
-	//2. Write the number of objects.
-	assert(objects.size() > 0);
-	const unsigned short objectCount = objects.size();
-	packet.write(&objectCount, sizeof(short), dataIndex);
-	dataIndex += sizeof(short);
-
-	//3. Write the size (in bytes) of a single object.
-	const unsigned short objectSize = sizeof(T);
-	packet.write(&objectSize, sizeof(short), dataIndex);
-	dataIndex += sizeof(short);
-
-	//4. Extract packet metadata.
-	packet.write(&packetType, sizeof(PacketType), dataIndex);
-	dataIndex += sizeof(PacketType);
-	packet.write(&packetMode, sizeof(PacketMode), dataIndex);
-	dataIndex += sizeof(PacketMode);
-
-	//5. Extract packet object data.
-	for (unsigned short i = 0; i < objectCount; i++) {
-		packet.write(objects[i], sizeof(T), dataIndex);
-		dataIndex += sizeof(T);
-	}
-	
-	return packet;
-}
-
-MulticastPacket deserialize(const Packet& packet) {
-	//1. Extract address information.
-	std::vector<Address> addresses;
-	Packet::deserialize(packet, addresses);
-	assert(addresses.size() > 0);
-	size_t dataIndex = sizeof(short) + sizeof(Address) * addresses.size();
-
-	//2. Extract object count.
-	unsigned short objectCount = 0;
-	packet.read(&objectCount, sizeof(short), dataIndex);
-	assert(objectCount > 0);
-	dataIndex += sizeof(short);
-
-	//3. Extract object size.
-	unsigned short objectSize = 0;
-	packet.read(&objectSize, sizeof(short), dataIndex);
-	assert(objectSize > 0);
-	dataIndex += sizeof(short);
-
-	//4. Extract packet metadata.
-	PacketType packetType;
-	packet.read(&packetType, sizeof(PacketType), dataIndex);
-	dataIndex += sizeof(PacketType);
-	PacketMode packetMode;
-	packet.read(&packetMode, sizeof(PacketMode), dataIndex);
-	dataIndex += sizeof(PacketMode);
-
-	//5. Extract packet object data.
-	Packet outgoing(packetType, packetMode);
-	outgoing.write(&packet.buffer(), objectSize * objectCount, dataIndex);
-
-	return { outgoing, addresses };
-}
 
 void setCursor(short x, short y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
@@ -171,7 +53,38 @@ void render(unsigned char screen[rows][cols]) {
 	}
 }
 
+struct Meme {
+	int a;
+	char garbage[3];
+	int b;
+};
+
+void test() {
+	Meme m1, m2;
+	m1.a = 3;
+	m1.b = 4;
+	m2.a = 5;
+	m2.b = 6;
+	Address a1, a2;
+	std::vector<Address> addresses{ a1, a2 };
+	std::vector<Meme> objects{ m1, m2 };
+
+	//1. Multi-serialize to combine the objects with the addresses.
+	Packet input = Multicast::serialize(addresses, objects, PacketType::PLAYER);
+
+	//2. Multi-deserialize (on the server) so we can send the desired packet to the array of addresses.
+	MulticastPacket output = Multicast::deserialize(input);
+
+	//3. Receive the regular packet and deserialize it.
+	Meme m3;
+	//(Its up to the programmer to call the correct function based on how many objects should be deserialized).
+	Packet::deserialize(output.m_packet, m3);
+	int stop;
+}
+
 int main() {
+	test();
+
 	Client client;
 	client.start();
 	client.setState(ClientState::CONSUME);
@@ -196,6 +109,8 @@ int main() {
 
 	unsigned char screen[rows][cols];
 	init(screen);
+
+	std::vector<Address> addresses;
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
@@ -222,9 +137,14 @@ int main() {
 			for (const Packet& i : incoming) {
 				switch (i.getType())
 				{
-				case PacketType::GET_ALL_CLIENT_INFORMATION:
+				case PacketType::GET_ALL_CLIENT_INFORMATION: {
 					Packet::deserialize(i, allClientInfomration);
+					//Copy addresses for convenience when multicasting.
+					addresses.resize(allClientInfomration.size());
+					for (size_t i = 0; i < addresses.size(); i++)
+						addresses[i] = allClientInfomration[i].m_address;
 					break;
+				}
 				case PacketType::GET_THIS_CLIENT_INFORMATION:
 					Packet::deserialize(i, thisClientInformation);
 					break;
@@ -240,10 +160,21 @@ int main() {
 					printf("Client received: %s %h %h %h %h\n", i.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
 					break;
 				}
+				case PacketType::TEST: {
+					Meme meme;
+					Packet::deserialize(i, meme);
+					printf("Test received: %i %i\n", meme.a, meme.b);
+					break;
+				}
 				default:
 					break;
 				}
 			}
+
+			Meme m;
+			m.a = 1;
+			m.b = 2;
+			client.addOutgoing(Multicast::serialize(addresses, m, PacketType::TEST));
 
 			//Only determine the players once and only do so once we're guaranteed to have enough information.
 			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {
