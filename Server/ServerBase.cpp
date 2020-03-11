@@ -60,57 +60,19 @@ bool ServerBase::recv()
 			m_clients[address].m_id = ++s_id;
 
 		static Address initialAddress;
-		if (m_clients.size() == 1) {
-			printf("-----ONE ADDRESS------\n");
+		if (m_clients.size() == 1)
 			initialAddress = m_clients.begin()->first;
-			initialAddress.print();
-			printf("--------------------\n\n");
-		}
 
-		else if (m_clients.size() >= 2) {
-			printf("-----TWO ADDRESSES-----\n");
+		if (m_clients.size() >= 2) {
+			printf("*******************\n");
 			for (auto i : m_clients) {
-				printf("Hash: %llu.\n", hashAddress(i.first));
+				printf("Id: %zu.\n", i.second.m_id);
 				i.first.print();
 			}
-			auto itr = m_clients.begin();
-			if (itr->first == (++itr)->first)
-				printf("1st and 2nd are equal, not good...\n");
-			else
-				printf("1st and 2nd aren't equal, good!\n");
-			printf("---------------------\n\n");
-
-			for (auto i : m_clients) {
-				if (i.first == initialAddress) {
-					if (i.second.m_id == 1)
-						printf("Yay the initial address key has an id of 1!\n");
-					break;
-				}
-			}
+			printf("Initial address:\n");
+			initialAddress.print();
+			printf("*****************\n\n");
 		}
-		
-		//static Address initialAddress;
-		//if (m_clients.size() == 1) {
-		//	printf("***ONE CLIENT***\n");
-		//	printf("Initial client id is %zu.\n", m_clients[address].m_id);
-		//	address.print();
-		//	printf("****************\n\n");
-		//	initialAddress = address;
-		//}
-		//
-		//if (m_clients.size() >= 2) {
-		//	auto i1 = m_clients.begin();
-		//	auto i2 = m_clients.begin()++;
-		//	printf("***TWO CLIENTS***\n");
-		//	printf("Client 1 id: %zu.\nClient 2 id: %zu.\n", i1->second.m_id, i2->second.m_id);
-		//	printf("----Client 1 address----\n");
-		//	i1->first.print();
-		//	printf("----Client 2 address----\n");
-		//	i2->first.print();
-		//	if (initialAddress == i1->first)
-		//		printf("Initial address is equal to current beginning address.\n\n");
-		//	printf("*****************\n\n");
-		//}
 
 		switch (packet.getType())
 		{
