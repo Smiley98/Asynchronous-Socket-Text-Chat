@@ -59,11 +59,35 @@ bool ServerBase::recv()
 		if (m_clients[address].m_id == 0)
 			m_clients[address].m_id = ++s_id;
 
-		//if (m_clients.size() >= 2) {
-		//	for (auto i : m_clients)
-		//		printf("Hash: %llu.\n", hashAddress(i.first));
-		//}
-		//printf("\n");
+		static Address initialAddress;
+		if (m_clients.size() == 1) {
+			printf("-----ONE ADDRESS------\n");
+			initialAddress = m_clients.begin()->first;
+			initialAddress.print();
+			printf("--------------------\n\n");
+		}
+
+		else if (m_clients.size() >= 2) {
+			printf("-----TWO ADDRESSES-----\n");
+			for (auto i : m_clients) {
+				printf("Hash: %llu.\n", hashAddress(i.first));
+				i.first.print();
+			}
+			auto itr = m_clients.begin();
+			if (itr->first == (++itr)->first)
+				printf("1st and 2nd are equal, not good...\n");
+			else
+				printf("1st and 2nd aren't equal, good!\n");
+			printf("---------------------\n\n");
+
+			for (auto i : m_clients) {
+				if (i.first == initialAddress) {
+					if (i.second.m_id == 1)
+						printf("Yay the initial address key has an id of 1!\n");
+					break;
+				}
+			}
+		}
 		
 		//static Address initialAddress;
 		//if (m_clients.size() == 1) {
