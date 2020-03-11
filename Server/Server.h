@@ -15,6 +15,8 @@ public:
 	Server();
 	~Server();
 
+	void addLag(double lag) { m_lag += lag; }
+
 	void start();
 	void stop();
 	bool running();
@@ -26,4 +28,5 @@ private:
 	std::atomic_uchar m_state = static_cast<byte>(ServerState::IDLE);
 	bool m_running = false;
 	void run();
+	double m_lag = 0.0;
 };

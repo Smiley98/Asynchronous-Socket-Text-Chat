@@ -207,16 +207,14 @@ inline std::string PacketBase<count>::typeString() const
 			return "generic";
 		case PacketType::STRING:
 			return "string";
-		//case PacketType::PLAYER:
-		//	return "player";
-		//case PacketType::PUCK:
-		//	return "puck";
 		case PacketType::PUCK_POSITION:
 			return "puck position";
 		case PacketType::PUCK_VELOCITY:
 			return "puck velocity";
 		case PacketType::OPPONENT_POSITION:
 			return "opponent position";
+		case PacketType::SCORE:
+			return "score";
 		case PacketType::TEST:
 			return "test";
 		default:

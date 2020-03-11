@@ -53,6 +53,12 @@ bool ServerBase::recv()
 		if (m_clients[address].m_id == 0)
 			m_clients[address].m_id = ++s_id;
 
+		//Thing to use in logs.
+		Point data;
+#if LOGGING
+		if (!packet.typeString().empty())
+			printf("Server received packet of type %s from client %zu.\n", packet.typeString().c_str(), m_clients[address].m_id);
+#endif
 		switch (packet.getType())
 		{
 			case PacketType::THIS_CLIENT_INFORMATION: {
@@ -67,12 +73,16 @@ bool ServerBase::recv()
 				m_clients[status.m_address].m_status = status.m_status;
 				break;
 			}
-		}
-
 #if LOGGING
-		if(!packet.typeString().empty())
-			printf("Server received packet of type %s from client %zu.\n", packet.typeString().c_str(), m_clients[address].m_id);
+			case PacketType::PUCK_POSITION:
+			case PacketType::PUCK_VELOCITY:
+			case PacketType::OPPONENT_POSITION:
+			case PacketType::SCORE:
+				Packet::deserialize(packet, data);
+				printf("Data: %hi, %hi.", data.x, data.y);
+				break;
 #endif
+		}
 
 		//No need to append the packet if its not meant to be routed.
 		if (packet.getMode() != PacketMode::ONE_WAY)

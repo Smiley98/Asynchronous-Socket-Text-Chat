@@ -2,6 +2,7 @@
 #include <thread>
 #include <future>
 #include <cstdio>
+#include "../Common/Timer.h"
 #define SERVER_LOGGING true
 
 Server::Server()
@@ -66,6 +67,12 @@ void Server::run()
 		case ServerState::IDLE:
 			break;
 		case ServerState::ROUTE: {
+			static Timer lagTimer;
+			if (m_lag != 0.0)
+				printf("Server lag: %f\n", m_lag);
+			if (lagTimer.elapsed() < m_lag)
+				continue;
+			lagTimer.restart();
 			std::future<void> syncRecv = std::async(&Server::recvAll, this);
 			std::future<void> syncSend = std::async(&Server::sendAll, this);
 			syncRecv.wait();

@@ -15,6 +15,7 @@
 #define pucksymbol 'O'
 #undef max
 #undef min
+#define LOGGING true
 
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
 void setCursor(short x, short y);
@@ -27,9 +28,10 @@ int main() {
 	client.start();
 	client.setState(ClientState::CONSUME);
 
-	std::queue<std::string> inputQueue;
-	std::mutex queueMutex;
-	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
+	//An artifact from assignment 1 ;)
+	//std::queue<std::string> inputQueue;
+	//std::mutex queueMutex;
+	//std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
 	Timer networkTimer, updateTimer, goalTimer, latencyTimer;
 	PacketBuffer incoming;
@@ -51,8 +53,10 @@ int main() {
 	bool synced = false;
 
 	//A hack to measure latency in attempt to sync.
-	double travelTime = 0.0;
-	bool measuring = false;
+	double latency = 0.0;
+	bool measuringLatency = false;
+
+	double lag = 0.0;
 
 	unsigned char screen[rows][cols];
 	init(screen);
@@ -60,22 +64,28 @@ int main() {
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
-		if (networkTimer.elapsed() >= 100.0) {
+		if (networkTimer.elapsed() >= 100.0 + lag) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
 			packet = Packet(PacketType::THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
 
-			if (!measuring) {
+			if (!measuringLatency) {
 				packet = Packet(PacketType::LATENCY, PacketMode::TWO_WAY);
 				client.addOutgoing(packet);
-				measuring = true;
+				measuringLatency = true;
 				latencyTimer.restart();
 			}
 
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
+#if LOGGING
+				if (!i.typeString().empty()) {
+					setCursor(cols, 0);
+					printf("Client received packet of type %s.", i.typeString().c_str());
+				}
+#endif
 				switch (i.getType())
 				{
 				case PacketType::ALL_CLIENT_INFORMATION: {
@@ -88,10 +98,18 @@ int main() {
 				}
 				case PacketType::PUCK_POSITION: {
 					Packet::deserialize(i, puck.position);
+#if LOGGING
+					setCursor(cols, 1);
+					printf("Data: %hi, %hi.", puck.position.x, puck.position.y);
+#endif
 					break;
 				}
 				case PacketType::PUCK_VELOCITY: {
 					Packet::deserialize(i, puck.velocity);
+#if LOGGING
+					setCursor(cols, 1);
+					printf("Data: %hi, %hi.", puck.velocity.x, puck.velocity.y);
+#endif
 					break;
 				}
 				case PacketType::OPPONENT_POSITION: {
@@ -101,6 +119,10 @@ int main() {
 						player2 = position;
 					else
 						player1 = position;
+#if LOGGING
+					setCursor(cols, 1);
+					printf("Data: %hi, %hi.", position.x, position.y);
+#endif
 					break;
 				}
 				case PacketType::SYNC: {
@@ -109,21 +131,17 @@ int main() {
 				}
 				case PacketType::SCORE: {
 					Packet::deserialize(i, score);
+#if LOGGING
+					setCursor(cols, 1);
+					printf("Data: %hi, %hi.", score.x, score.y);
+#endif
 					break;
 				}
 				case PacketType::LATENCY: {
-					travelTime = latencyTimer.elapsed();
-					measuring = false;
+					latency = latencyTimer.elapsed();
+					measuringLatency = false;
 					break;
 				}
-				//case PacketType::MASTER_SYNC: {
-				//	masterSynced = true;
-				//	break;
-				//}
-				//case PacketType::SLAVE_SYNC: {
-				//	slaveSynced = true;
-				//	break;
-				//}
 				default:
 					break;
 				}
@@ -135,11 +153,6 @@ int main() {
 			}
 			if (thisClientInformation.m_id == lowest)
 				master = true;
-
-			//if(master)
-			//	printf("Id: %zu (master).\n", thisClientInformation.m_id);
-			//else
-			//	printf("Id: %zu.\n", thisClientInformation.m_id);
 		}
 		if (allClientInfomration.size() < 2) {
 			printf("Waiting for other players. . .");
@@ -228,7 +241,7 @@ int main() {
 			}
 			
 			//Try and account for latency. Not sure if this is considered a hack xD. Doesn't matter, it doesn't work...
-			double goalDelay = master ? travelTime + 3000.0 : 3000.0;
+			double goalDelay = master ? latency + 3000.0 : 3000.0;
 			//printf("Travel time: %f\n", travelTime);
 			if (goalTimer.elapsed() >= goalDelay) {
 				puck.position.y += puck.velocity.y;
@@ -265,6 +278,16 @@ int main() {
 				}
 			}
 
+			//Lag switches.
+			if (GetAsyncKeyState(49)) {
+				lag += 100.0;
+				printf("New lag: %f.\n", lag);
+			}
+			else if (GetAsyncKeyState(50)) {
+				lag -= 100.0;
+				printf("New lag: %f.\n", lag);
+			}
+
 			//Send the position of this client's player to the other client.
 			if (input) {
 				packet = Packet(PacketType::OPPONENT_POSITION, PacketMode::REROUTE);
@@ -280,7 +303,7 @@ int main() {
 			if (master)
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 128);
 			render(screen);
-			printf("Player 1: %hu/5, player 2: %hu/5.\n", score.x, score.y);
+			printf("Player 1: %hi/5, player 2: %hi/5.\n", score.x, score.y);
 		}
 	}
 
