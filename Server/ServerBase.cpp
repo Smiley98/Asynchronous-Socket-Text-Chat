@@ -3,7 +3,8 @@
 #include "../Common/NetworkObjects.h"
 #include "../Common/Multicast.h"
 #include <iostream>
-#define REFRESH_FREQUENCY 1000.0
+#define DISCONNET_FREQUENCY 5000.0
+#define UPDATE_FREQUENCY 100.0
 #define LOGGING true
 
 size_t ServerBase::s_id = 0;
@@ -84,11 +85,10 @@ bool ServerBase::recv()
 
 void ServerBase::refresh()
 {
-	static Timer timer;
-	if (timer.elapsed() >= REFRESH_FREQUENCY) {
-		timer.restart();
+	static Timer disconnectTimer;
+	if (disconnectTimer.elapsed() >= DISCONNET_FREQUENCY) {
+		disconnectTimer.restart();
 
-		//1. Disconnect any inactive clients.
 		auto itr = m_clients.begin();
 		while (itr != m_clients.end()) {
 			if (itr->second.m_active) {
@@ -98,8 +98,12 @@ void ServerBase::refresh()
 			else
 				itr = m_clients.erase(itr);
 		}
+	}
 
-		//2. Broadcast client information.
+	static Timer updateTimer;
+	if (updateTimer.elapsed() >= UPDATE_FREQUENCY) {
+		updateTimer.restart();
+
 		std::vector<ClientInformation> allClientInformation(m_clients.size());
 		size_t count = 0;
 		for (const auto& i : m_clients) {
@@ -113,7 +117,6 @@ void ServerBase::refresh()
 		Packet::serialize(allClientInformation, allClientsPacket);
 		for (const ClientInformation& clientInformation : allClientInformation)
 			clientInformation.m_address.sendTo(m_socket, allClientsPacket);
-		//Can also send out this THIS_CLIENT_INFORMATION here if desired.
 	}
 }
 
