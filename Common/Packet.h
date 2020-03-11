@@ -10,17 +10,15 @@ enum class PacketType : byte {
 	GENERIC,
 	STRING,
 
-	GET_ALL_CLIENT_INFORMATION,
-	GET_THIS_CLIENT_INFORMATION,
-	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
+	ALL_CLIENT_INFORMATION,
+	THIS_CLIENT_INFORMATION,
+
+	SET_CLIENT_STATUS,
 
 	PUCK_POSITION,
 	PUCK_VELOCITY,
 	OPPONENT_POSITION,
-	//PUCK,
-	//PLAYER,
 
-	//Used whenever I need to test a new protocol feature.
 	TEST,
 
 	COUNT

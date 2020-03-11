@@ -55,18 +55,18 @@ int main() {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
-			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
+			packet = Packet(PacketType::THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
 
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
 				switch (i.getType())
 				{
-				case PacketType::GET_ALL_CLIENT_INFORMATION: {
+				case PacketType::ALL_CLIENT_INFORMATION: {
 					Packet::deserialize(i, allClientInfomration);
 					break;
 				}
-				case PacketType::GET_THIS_CLIENT_INFORMATION: {
+				case PacketType::THIS_CLIENT_INFORMATION: {
 					Packet::deserialize(i, thisClientInformation);
 					break;
 				}
@@ -83,17 +83,6 @@ int main() {
 					break;
 				}
 			}
-
-			//printf("------All clients------\n");
-			//for (const ClientInformation& ci : allClientInfomration) {
-			//	ci.m_address.print();
-			//	printf("%zu.\n", ci.m_id);
-			//}
-			
-			//Turns out this is always the same between clients.
-			printf("------This client------\n");
-			thisClientInformation.m_address.print();
-			printf("This client id: %zu.\n\n", thisClientInformation.m_id);
 		}
 
 		if (updateTimer.elapsed() >= 100.0) {

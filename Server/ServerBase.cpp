@@ -19,17 +19,9 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	bool result = true;
 	switch (packet.getMode())
 	{
-	case PacketMode::TWO_WAY: {
-		//Deserialized address matches from address, deserialized id matches from id... Why isn't this making it to the client correctly?
-		//printf("------SEND------\n");
-		//ClientInformation ci;
-		//Packet::deserialize(packet, ci);
-		//ci.m_address.print();
-		//fromAddress.print();
-		//printf("Id: %zu.\n", m_clients[fromAddress].m_id);
-		//printf("Id: %zu.\n\n", ci.m_id);
+	case PacketMode::TWO_WAY:
 		result = fromAddress.sendTo(m_socket, packet);
-	}
+		break;
 	case PacketMode::REROUTE:
 		result = reroute(packet, fromAddress);
 		break;
@@ -60,29 +52,22 @@ bool ServerBase::recv()
 		if (m_clients[address].m_id == 0)
 			m_clients[address].m_id = ++s_id;
 
-		//printf("------RECV------\n");
-		//static Address initialAddress;
-		//if (m_clients.size() == 1)
-		//	initialAddress = m_clients.begin()->first;
-		//printf("Initial address:\n");
-		//initialAddress.print();
-		//printf("Initial address id: %zu\n\n", m_clients[initialAddress].m_id);
-
 		switch (packet.getType())
 		{
-			case PacketType::GET_THIS_CLIENT_INFORMATION: {
-				ClientInformation clientInformation{ address, m_clients[address].m_id, m_clients[address].m_status };
+			case PacketType::THIS_CLIENT_INFORMATION: {
+				ClientInformation clientInformation{ address, m_clients[address].m_id,  m_clients[address].m_status };
 				Packet::serialize(clientInformation, packet);
 				break;
 			}
 
 			case PacketType::SET_CLIENT_STATUS: {
-				ClientInformation routedStatus;
-				Packet::deserialize(packet, routedStatus);
-				m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
+				ClientInformation status;
+				Packet::deserialize(packet, status);
+				m_clients[status.m_address].m_status = status.m_status;
 				break;
 			}
 		}
+
 #if LOGGING
 		if(!packet.typeString().empty())
 			printf("Server received packet of type %s from client %zu.\n", packet.typeString().c_str(), m_clients[address].m_id);
@@ -124,11 +109,11 @@ void ServerBase::refresh()
 			count++;
 		}
 
-		Packet packet(PacketType::GET_ALL_CLIENT_INFORMATION, PacketMode::ONE_WAY);
-		Packet::serialize(allClientInformation, packet);
-		for (const ClientInformation& clientInformation : allClientInformation) {
-			clientInformation.m_address.sendTo(m_socket, packet);
-		}
+		Packet allClientsPacket(PacketType::ALL_CLIENT_INFORMATION, PacketMode::ONE_WAY);
+		Packet::serialize(allClientInformation, allClientsPacket);
+		for (const ClientInformation& clientInformation : allClientInformation)
+			clientInformation.m_address.sendTo(m_socket, allClientsPacket);
+		//Can also send out this THIS_CLIENT_INFORMATION here if desired.
 	}
 }
 
