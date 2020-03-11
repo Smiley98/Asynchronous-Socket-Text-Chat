@@ -7,12 +7,11 @@ bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
 
 uint64_t hashAddress(const Address& address)
 {
-	uint64_t addr = address.m_sai.sin_addr.s_addr;	//4 bytes long
-	uint64_t port = address.m_sai.sin_port;			//2 bytes long
-	uint64_t result = addr << 4;
-	result |= port;
-	//(ADDR ADDR ADDR ADDR NONE NONE PORT PORT)
-	return result;
+	//Move the address so it occupies the left-most bits.
+	uint64_t addr = address.m_sai.sin_addr.s_addr;
+	addr <<= sizeof(address.m_sai.sin_addr.s_addr) * 8;
+	uint64_t port = address.m_sai.sin_port;
+	return addr | port;
 }
 
 uint64_t AddressHash::operator()(const Address& address) const
