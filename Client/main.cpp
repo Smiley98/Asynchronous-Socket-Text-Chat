@@ -68,7 +68,6 @@ int main() {
 				}
 				case PacketType::THIS_CLIENT_INFORMATION: {
 					Packet::deserialize(i, thisClientInformation);
-					printf("%zu\n", thisClientInformation.m_id);
 					break;
 				}
 				case PacketType::OPPONENT_POSITION: {
@@ -91,14 +90,12 @@ int main() {
 			}
 			if (thisClientInformation.m_id == lowest)
 				master = true;
-			//setCursor(cols, 0);
-			printf("Id: %zu\n", thisClientInformation.m_id);
-			if (master) {
-				//setCursor(cols, 1);
-				printf("I AM THE MASTER!!!\n");
-			}
+			if(master)
+				printf("Id: %zu (master).\n", thisClientInformation.m_id);
+			else
+				printf("Id: %zu.\n", thisClientInformation.m_id);
 		}
-
+		
 		if (updateTimer.elapsed() >= 100.0) {
 			updateTimer.restart();
 
