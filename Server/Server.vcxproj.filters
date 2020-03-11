@@ -30,9 +30,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="..\Common\ClientInfo.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\Network.h">
@@ -56,10 +53,10 @@
     <ClInclude Include="ServerBase.h">
       <Filter>Server</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\NetworkObject.h">
+    <ClInclude Include="..\Common\Multicast.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Multicast.h">
+    <ClInclude Include="..\Common\NetworkObjects.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>

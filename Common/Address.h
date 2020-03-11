@@ -3,7 +3,7 @@
 #include <WinSock2.h>
 
 struct Address;
-ULONG hashAddress(const Address& address);
+uint64_t hashAddress(const Address& address);
 bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b);
 
 struct Address {
@@ -20,5 +20,5 @@ struct Address {
 };
 
 struct AddressHash {
-	ULONG operator()(const Address& address) const;
+	uint64_t operator()(const Address& address) const;
 };

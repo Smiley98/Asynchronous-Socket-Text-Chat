@@ -5,12 +5,17 @@ bool compareAddresses(const SOCKADDR_IN& a, const SOCKADDR_IN& b)
 	return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
 }
 
-ULONG hashAddress(const Address& address)
+uint64_t hashAddress(const Address& address)
 {
-	return address.m_sai.sin_addr.s_addr ^ address.m_sai.sin_port;
+	uint64_t addr = address.m_sai.sin_addr.s_addr;	//4 bytes long
+	uint64_t port = address.m_sai.sin_port;			//2 bytes long
+	uint64_t result = addr << 4;
+	result |= port;
+	//(ADDR ADDR ADDR ADDR NONE NONE PORT PORT)
+	return result;
 }
 
-ULONG AddressHash::operator()(const Address& address) const
+uint64_t AddressHash::operator()(const Address& address) const
 {
 	return hashAddress(address);
 }

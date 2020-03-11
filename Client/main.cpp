@@ -1,7 +1,7 @@
 #include "Client.h"
 #include "../Common/Timer.h"
 #include "../Common/ClientInfo.h"
-#include "../Common/NetworkObject.h"
+#include "../Common/NetworkObjects.h"
 #include "../Common/Multicast.h"
 #include <iostream>
 #include <string>
@@ -13,9 +13,185 @@
 #define cols 11
 #define playersymbol 'X'
 #define pucksymbol 'O'
+#undef max
+#undef min
 
-//Asynchronously receive and store keyboard input.
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
+void setCursor(short x, short y);
+void reset(unsigned char screen[rows][cols]);
+void init(unsigned char screen[rows][cols]);
+void render(unsigned char screen[rows][cols]);
+
+int main() {
+	Client client;
+	client.start();
+	client.setState(ClientState::CONSUME);
+
+	std::queue<std::string> inputQueue;
+	std::mutex queueMutex;
+	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
+	
+	Timer networkTimer, updateTimer;
+	PacketBuffer incoming;
+
+	std::vector<ClientInformation> allClientInfomration;
+	ClientInformation thisClientInformation;
+
+	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
+	Puck puck{ 5, 9, -1, -1 };
+	Point player1{ 5, 1 };
+	Point player2{ 5, 15 };
+
+	//Indicates whether this client updates the other client or vice-versa.
+	bool master = false;
+
+	unsigned char screen[rows][cols];
+	init(screen);
+	reset(screen);
+
+	while (true) {
+		//Do network stuff every 0.1 seconds.
+		if (networkTimer.elapsed() >= 1000.0) {
+			networkTimer.restart();
+			client.copyIncoming(incoming);
+
+			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
+			client.addOutgoing(packet);
+
+			//Deserialize all incoming packets.
+			for (const Packet& i : incoming) {
+				switch (i.getType())
+				{
+				case PacketType::GET_ALL_CLIENT_INFORMATION: {
+					Packet::deserialize(i, allClientInfomration);
+					break;
+				}
+				case PacketType::GET_THIS_CLIENT_INFORMATION: {
+					Packet::deserialize(i, thisClientInformation);
+					break;
+				}
+				case PacketType::OPPONENT_POSITION: {
+					Point position;
+					Packet::deserialize(i, position);
+					if (master)
+						player2 = position;
+					else
+						player1 = position;
+					break;
+				}
+				default:
+					break;
+				}
+			}
+
+			//printf("------All clients------\n");
+			//for (const ClientInformation& ci : allClientInfomration) {
+			//	ci.m_address.print();
+			//	printf("%zu.\n", ci.m_id);
+			//}
+			
+			//Turns out this is always the same between clients.
+			printf("------This client------\n");
+			thisClientInformation.m_address.print();
+			printf("This client id: %zu.\n\n", thisClientInformation.m_id);
+		}
+
+		if (updateTimer.elapsed() >= 100.0) {
+			updateTimer.restart();
+
+			//Reset then copy game objects to buffer.
+			reset(screen);
+			screen[player1.y][player1.x] = playersymbol;
+			screen[player2.y][player2.x] = playersymbol;
+			screen[puck.position.y][puck.position.x] = pucksymbol;
+			bool puckPositionUpdate = false;
+			bool puckVelocityUpdate = false;
+
+			//Player collision.
+			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
+				puck.velocity.x *= -1;
+				puck.velocity.y *= -1;
+				if (master)
+					puckVelocityUpdate = true;
+			}
+
+			//Border collision.
+			short puckFutureX = puck.position.x + puck.velocity.x;
+			short puckFutureY = puck.position.y + puck.velocity.y;
+			if (puckFutureX <= 0 || puckFutureX >= cols - 1) {
+				puck.velocity.x *= -1;
+				if (master)
+					puckVelocityUpdate = true;
+			}
+			if (puckFutureY <= 0 || puckFutureY >= rows - 1) {
+				puck.velocity.y *= -1;
+				if (master)
+					puckVelocityUpdate = true;
+			}
+
+			//No more puck logic, apply velocity.
+			puck.position.y += puck.velocity.y;
+			puck.position.x += puck.velocity.x;
+
+			if(puckVelocityUpdate) {
+				packet = Packet(PacketType::PUCK_VELOCITY, PacketMode::REROUTE);
+				Packet::serialize(puck.velocity, packet);
+				client.addOutgoing(packet);
+			}
+
+			bool input = false;
+			if (GetAsyncKeyState(VK_LEFT)) {
+				input = true;
+				if (master) {
+					if (player1.x - 1 > 0)
+						player1.x--;
+				}
+				else {
+					if (player2.x - 1 > 0)
+						player2.x--;
+				}
+			}
+			else if (GetAsyncKeyState(VK_RIGHT)) {
+				input = true;
+				if (master) {
+					if (player1.x + 1 < cols - 1)
+						player1.x++;
+				}
+				else {
+					if (player2.x + 1 < cols - 1)
+						player2.x++;
+				}
+			}
+
+			//Send the position of this client's player to the other client.
+			if (input) {
+				packet = Packet(PacketType::OPPONENT_POSITION, PacketMode::REROUTE);
+				if (master)
+					Packet::serialize(player1, packet);
+				else
+					Packet::serialize(player2, packet);
+				client.addOutgoing(packet);
+			}
+
+			//Clear and render screen.
+			//setCursor(0, 0);
+			//render(screen);
+		}
+	}
+
+	return getchar();
+}
+
+void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
+	while (true) {
+		std::string line;
+		std::getline(std::cin, line);
+		line += "\n";
+		mutex.lock();
+		queue.push(line);
+		mutex.unlock();
+	}
+}
 
 void setCursor(short x, short y) {
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
@@ -49,153 +225,5 @@ void render(unsigned char screen[rows][cols]) {
 			printf("%c", screen[i][j]);
 		}
 		printf("\n");
-	}
-}
-
-int main() {
-	Client client;
-	client.start();
-	client.setState(ClientState::CONSUME);
-
-	std::queue<std::string> inputQueue;
-	std::mutex queueMutex;
-	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
-	
-	Timer networkTimer, renderTimer;
-	PacketBuffer incoming;
-
-	std::vector<ClientInformation> allClientInfomration;
-	ClientInformation thisClientInformation;
-
-	//We never need more than one packet to read/write to/from because read/write operations are sequential copying.
-	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
-
-	Puck puck{ 5, 9, -1, -1 };
-	Point player1{ 5, 1 };
-	Point player2{ 5, 15 };
-	bool isPlayerOne;// , bothConnected = false;
-
-	unsigned char screen[rows][cols];
-	init(screen);
-
-	std::vector<Address> addresses;
-
-	while (true) {
-		//Do network stuff every 0.1 seconds.
-		if (networkTimer.elapsed() >= 100.0) {
-			networkTimer.restart();
-			client.copyIncoming(incoming);
-
-			packet = Packet(PacketType::GET_THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
-			client.addOutgoing(packet);
-
-			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
-			Packet::serialize(player1, packet);
-			client.addOutgoing(packet);
-
-			packet = Packet(PacketType::PLAYER, PacketMode::BROADCAST);
-			Packet::serialize(player2, packet);
-			client.addOutgoing(packet);
-
-			packet = Packet(PacketType::PUCK, PacketMode::BROADCAST);
-			Packet::serialize(puck, packet);
-			client.addOutgoing(packet);
-
-			//Deserialize all incoming packets.
-			for (const Packet& i : incoming) {
-				switch (i.getType())
-				{
-				case PacketType::GET_ALL_CLIENT_INFORMATION: {
-					Packet::deserialize(i, allClientInfomration);
-					//Copy to addresses for convenience when multicasting.
-					addresses.resize(allClientInfomration.size());
-					for (size_t i = 0; i < addresses.size(); i++)
-						addresses[i] = allClientInfomration[i].m_address;
-					break;
-				}
-				case PacketType::GET_THIS_CLIENT_INFORMATION:
-					Packet::deserialize(i, thisClientInformation);
-					break;
-				case PacketType::PLAYER: {
-					Point data;
-					Packet::deserialize(i, data);
-					printf("Client received: %s %h %h\n", i.typeString().c_str(), data.x, data.y);
-					break;
-				}
-				case PacketType::PUCK: {
-					Puck data;
-					Packet::deserialize(i, data);
-					printf("Client received: %s %h %h %h %h\n", i.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
-					break;
-				}
-				case PacketType::TEST: {
-					//Packet::deserialize(i, );
-					break;
-				}
-				default:
-					break;
-				}
-			}
-
-			//Only determine the players once and only do so once we're guaranteed to have enough information.
-			if (allClientInfomration.size() >= 2 && thisClientInformation.m_id > 0) {
-				static bool once = true;
-				if (once) {
-					once = false;
-					for (const ClientInformation& clientInformation : allClientInfomration)
-						isPlayerOne = thisClientInformation.m_id <= clientInformation.m_id;
-				}
-			}
-		}
-
-		if (renderTimer.elapsed() >= 100.0) {
-			renderTimer.restart();
-			//system("cls");//Much faster to reposition the cursor instead of clearing the screen.
-			setCursor(0, 0);
-			reset(screen);
-			screen[player1.y][player1.x] = playersymbol;
-			screen[player2.y][player2.x] = playersymbol;
-			screen[puck.position.y][puck.position.x] = pucksymbol;
-			//Player collision.
-			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
-				puck.velocity.x *= -1;
-				puck.velocity.y *= -1;
-			}
-			//Border collision.
-			short futureX = puck.position.x + puck.velocity.x;
-			short futureY = puck.position.y + puck.velocity.y;
-			if (futureX <= 0 || futureX >= cols - 1)
-				puck.velocity.x = -puck.velocity.x;
-			if (futureY <= 0 || futureY >= rows - 1)
-				puck.velocity.y = -puck.velocity.y;
-
-			//I didn't have enough time to assign players via network.
-			if (GetAsyncKeyState(VK_LEFT)) {
-				if (player1.x - 1 > 0)
-					player1.x--;
-			}
-			else if (GetAsyncKeyState(VK_RIGHT)) {
-				if (player1.x + 1 < cols - 1)
-					player1.x++;
-			}
-
-			puck.position.y += puck.velocity.y;
-			puck.position.x += puck.velocity.x;
-
-			render(screen);
-		}
-	}
-
-	return getchar();
-}
-
-void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
-	while (true) {
-		std::string line;
-		std::getline(std::cin, line);
-		line += "\n";
-		mutex.lock();
-		queue.push(line);
-		mutex.unlock();
 	}
 }

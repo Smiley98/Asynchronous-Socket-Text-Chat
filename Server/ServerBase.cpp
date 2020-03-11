@@ -1,10 +1,12 @@
 #include "ServerBase.h"
 #include "../Common/Timer.h"
-#include "../Common/NetworkObject.h"
+#include "../Common/NetworkObjects.h"
 #include "../Common/Multicast.h"
 #include <iostream>
-#define TIMEOUT 100.0
+#define REFRESH_FREQUENCY 1000.0
 #define LOGGING true
+
+size_t ServerBase::s_id = 0;
 
 void ServerBase::sendAll()
 {
@@ -17,8 +19,16 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	bool result = true;
 	switch (packet.getMode())
 	{
-	case PacketMode::TWO_WAY:
+	case PacketMode::TWO_WAY: {
+		//Deserialized address matches from address, deserialized id matches from id... Why isn't this making it to the client correctly?
+		//ClientInformation ci;
+		//Packet::deserialize(packet, ci);
+		//ci.m_address.print();
+		//fromAddress.print();
+		//printf("Id: %zu.\n", m_clients[fromAddress].m_id);
+		//printf("Id: %zu.\n", ci.m_id);
 		result = fromAddress.sendTo(m_socket, packet);
+	}
 	case PacketMode::REROUTE:
 		result = reroute(packet, fromAddress);
 		break;
@@ -47,44 +57,56 @@ bool ServerBase::recv()
 		m_clients[address].m_active = true;
 		//0 means new client so assign it a unique id!
 		if (m_clients[address].m_id == 0)
-			m_clients[address].m_id = ++ClientDescriptor::s_id;
+			m_clients[address].m_id = ++s_id;
+
+		//if (m_clients.size() >= 2) {
+		//	for (auto i : m_clients)
+		//		printf("Hash: %llu.\n", hashAddress(i.first));
+		//}
+		//printf("\n");
+		
+		//static Address initialAddress;
+		//if (m_clients.size() == 1) {
+		//	printf("***ONE CLIENT***\n");
+		//	printf("Initial client id is %zu.\n", m_clients[address].m_id);
+		//	address.print();
+		//	printf("****************\n\n");
+		//	initialAddress = address;
+		//}
+		//
+		//if (m_clients.size() >= 2) {
+		//	auto i1 = m_clients.begin();
+		//	auto i2 = m_clients.begin()++;
+		//	printf("***TWO CLIENTS***\n");
+		//	printf("Client 1 id: %zu.\nClient 2 id: %zu.\n", i1->second.m_id, i2->second.m_id);
+		//	printf("----Client 1 address----\n");
+		//	i1->first.print();
+		//	printf("----Client 2 address----\n");
+		//	i2->first.print();
+		//	if (initialAddress == i1->first)
+		//		printf("Initial address is equal to current beginning address.\n\n");
+		//	printf("*****************\n\n");
+		//}
 
 		switch (packet.getType())
 		{
 			case PacketType::GET_THIS_CLIENT_INFORMATION: {
-				ClientInformation clientInformation{ address, m_clients[address].m_status };
+				ClientInformation clientInformation{ address, m_clients[address].m_id, m_clients[address].m_status };
 				Packet::serialize(clientInformation, packet);
 				break;
 			}
-			
+
 			case PacketType::SET_CLIENT_STATUS: {
 				ClientInformation routedStatus;
 				Packet::deserialize(packet, routedStatus);
 				m_clients[routedStatus.m_address].m_status = routedStatus.m_status;
 				break;
 			}
-
-			case PacketType::PLAYER: {
-				Point data;
-				Packet::deserialize(packet, data);
-				printf("Server received: %s %h %h\n", packet.typeString().c_str(), data.x, data.y);
-				break;
-			}
-			case PacketType::PUCK: {
-				Puck data;
-				Packet::deserialize(packet, data);
-				printf("Server received: %s %h %h %h %h\n", packet.typeString().c_str(), data.position.x, data.position.y, data.velocity.x, data.velocity.y);
-				break;
-			}
-			
-			case PacketType::STRING:
-	#if LOGGING
-				printf("String packet: %s\n", packet.toString().c_str());
-	#endif
-				break;
-			default:
-				break;
 		}
+#if LOGGING
+		if(!packet.typeString().empty())
+			printf("Server received packet of type %s from client %zu.\n", packet.typeString().c_str(), m_clients[address].m_id);
+#endif
 
 		//No need to append the packet if its not meant to be routed.
 		if (packet.getMode() != PacketMode::ONE_WAY)
@@ -98,7 +120,7 @@ bool ServerBase::recv()
 void ServerBase::refresh()
 {
 	static Timer timer;
-	if (timer.elapsed() >= TIMEOUT) {
+	if (timer.elapsed() >= REFRESH_FREQUENCY) {
 		timer.restart();
 
 		//1. Disconnect any inactive clients.
@@ -118,6 +140,7 @@ void ServerBase::refresh()
 		for (const auto& i : m_clients) {
 			allClientInformation[count].m_address = i.first;
 			allClientInformation[count].m_status = i.second.m_status;
+			allClientInformation[count].m_id = i.second.m_id;
 			count++;
 		}
 

@@ -53,4 +53,5 @@ private:
 	std::unordered_map<Address, ClientDescriptor, AddressHash> m_clients;
 	ADDRINFO* m_address = NULL;
 	SOCKET m_socket = INVALID_SOCKET;
+	static size_t s_id;
 };

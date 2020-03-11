@@ -4,18 +4,18 @@
 enum class ClientStatus : byte {
 	FREE,
 	IN_CHAT,
-	IN_GAME
+	IN_GAME,
+	HELLA_LIT = 69
 };
 
 struct ClientDescriptor {
-	static size_t s_id;
-	size_t m_id = 0;//Defaulted to 0 but never should always be 1 or greater when in use.
+	size_t m_id = 0;
 	ClientStatus m_status = ClientStatus::FREE;
 	bool m_active = false;
 };
 
 struct ClientInformation {
 	Address m_address;
-	ClientStatus m_status = ClientStatus::FREE;
 	size_t m_id = 0;
+	ClientStatus m_status = ClientStatus::FREE;
 };

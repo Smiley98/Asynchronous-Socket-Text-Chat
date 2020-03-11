@@ -14,8 +14,11 @@ enum class PacketType : byte {
 	GET_THIS_CLIENT_INFORMATION,
 	SET_CLIENT_STATUS,			//Used by any client to assign the status of any client. Data is 1 address + 1 client status.
 
-	PUCK,
-	PLAYER,
+	PUCK_POSITION,
+	PUCK_VELOCITY,
+	OPPONENT_POSITION,
+	//PUCK,
+	//PLAYER,
 
 	//Used whenever I need to test a new protocol feature.
 	TEST,
@@ -202,10 +205,18 @@ inline std::string PacketBase<count>::typeString() const
 			return "generic";
 		case PacketType::STRING:
 			return "string";
-		case PacketType::PLAYER:
-			return "player";
-		case PacketType::PUCK:
-			return "puck";
+		//case PacketType::PLAYER:
+		//	return "player";
+		//case PacketType::PUCK:
+		//	return "puck";
+		case PacketType::PUCK_POSITION:
+			return "puck position";
+		case PacketType::PUCK_VELOCITY:
+			return "puck velocity";
+		case PacketType::OPPONENT_POSITION:
+			return "opponent position";
+		case PacketType::TEST:
+			return "test";
 		default:
 			return "";
 	}

@@ -56,10 +56,10 @@
     <ClInclude Include="ClientBase.h">
       <Filter>Client</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\NetworkObject.h">
-      <Filter>Client</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Multicast.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\NetworkObjects.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
