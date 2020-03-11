@@ -21,12 +21,13 @@ bool ServerBase::send(Packet& packet, const Address& fromAddress)
 	{
 	case PacketMode::TWO_WAY: {
 		//Deserialized address matches from address, deserialized id matches from id... Why isn't this making it to the client correctly?
+		//printf("------SEND------\n");
 		//ClientInformation ci;
 		//Packet::deserialize(packet, ci);
 		//ci.m_address.print();
 		//fromAddress.print();
 		//printf("Id: %zu.\n", m_clients[fromAddress].m_id);
-		//printf("Id: %zu.\n", ci.m_id);
+		//printf("Id: %zu.\n\n", ci.m_id);
 		result = fromAddress.sendTo(m_socket, packet);
 	}
 	case PacketMode::REROUTE:
@@ -59,20 +60,13 @@ bool ServerBase::recv()
 		if (m_clients[address].m_id == 0)
 			m_clients[address].m_id = ++s_id;
 
-		static Address initialAddress;
-		if (m_clients.size() == 1)
-			initialAddress = m_clients.begin()->first;
-
-		if (m_clients.size() >= 2) {
-			printf("*******************\n");
-			for (auto i : m_clients) {
-				printf("Id: %zu.\n", i.second.m_id);
-				i.first.print();
-			}
-			printf("Initial address:\n");
-			initialAddress.print();
-			printf("*****************\n\n");
-		}
+		//printf("------RECV------\n");
+		//static Address initialAddress;
+		//if (m_clients.size() == 1)
+		//	initialAddress = m_clients.begin()->first;
+		//printf("Initial address:\n");
+		//initialAddress.print();
+		//printf("Initial address id: %zu\n\n", m_clients[initialAddress].m_id);
 
 		switch (packet.getType())
 		{
