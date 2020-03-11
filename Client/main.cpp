@@ -31,7 +31,7 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
-	Timer networkTimer, updateTimer, goalTimer;
+	Timer networkTimer, updateTimer, goalTimer, latencyTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
@@ -42,11 +42,17 @@ int main() {
 	Puck puck{ centre, -1, -1 };
 	Point player1{ 5, 1 };
 	Point player2{ 5, 15 };
-	unsigned short score1 = 0, score2 = 0;
+	Point score{ 0, 0 };//unsigned short score1 = 0, score2 = 0;//Lol its easier to serialize a 2 component number despite being unintuitive.
 	bool p1Goal = false, p2Goal = false;
 
 	//Indicates whether this client updates the other client or vice-versa.
-	bool master = false, masterSynced = false, slaveSynced = false;
+	bool master = false;
+	//Sync status. Master sends to self (for an attempt at round-trip latency) and slave, slave just accepts.
+	bool synced = false;
+
+	//A hack to measure latency in attempt to sync.
+	double travelTime = 0.0;
+	bool measuring = false;
 
 	unsigned char screen[rows][cols];
 	init(screen);
@@ -60,6 +66,13 @@ int main() {
 
 			packet = Packet(PacketType::THIS_CLIENT_INFORMATION, PacketMode::TWO_WAY);
 			client.addOutgoing(packet);
+
+			if (!measuring) {
+				packet = Packet(PacketType::LATENCY, PacketMode::TWO_WAY);
+				client.addOutgoing(packet);
+				measuring = true;
+				latencyTimer.restart();
+			}
 
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
@@ -90,14 +103,27 @@ int main() {
 						player1 = position;
 					break;
 				}
-				case PacketType::MASTER_SYNC: {
-					masterSynced = true;
+				case PacketType::SYNC: {
+					synced = true;
 					break;
 				}
-				case PacketType::SLAVE_SYNC: {
-					slaveSynced = true;
+				case PacketType::SCORE: {
+					Packet::deserialize(i, score);
 					break;
 				}
+				case PacketType::LATENCY: {
+					travelTime = latencyTimer.elapsed();
+					measuring = false;
+					break;
+				}
+				//case PacketType::MASTER_SYNC: {
+				//	masterSynced = true;
+				//	break;
+				//}
+				//case PacketType::SLAVE_SYNC: {
+				//	slaveSynced = true;
+				//	break;
+				//}
 				default:
 					break;
 				}
@@ -124,12 +150,12 @@ int main() {
 		if (updateTimer.elapsed() >= 100.0) {
 			updateTimer.restart();
 
-			if (score1 >= 5) {
+			if (score.x >= 5) {
 				system("cls");
 				printf("Player one wins!");
 				continue;
 			}
-			else if (score2 >= 5) {
+			else if (score.y >= 5) {
 				system("cls");
 				printf("Player two wins!");
 				continue;
@@ -174,39 +200,37 @@ int main() {
 				packet = Packet(PacketType::PUCK_POSITION, PacketMode::REROUTE);
 				Packet::serialize(puck.position, packet);
 				client.addOutgoing(packet);
-
-				//Lock-step the puck reset.
-				//Sadly I don't have support for blocking sockets so I can't reliably sync the clients. Best I can do is a handshake.
-				bool synced = false;
-				if (master) {
-					synced = masterSynced;
-					packet = Packet(PacketType::SLAVE_SYNC, PacketMode::REROUTE);
-				}
-				else {
-					synced = slaveSynced;
-					packet = Packet(PacketType::MASTER_SYNC, PacketMode::REROUTE);
-				}
+				
+				//Idk why this doesn't work :( Maybe cause this game is frame-based xD.
+				//The proper way to do lock-step would be with TCP sockets which I did not plan for and thus cannot reasonably support at this time.
 				if (!synced) {
+					packet = Packet(PacketType::SYNC, PacketMode::BROADCAST);
 					client.addOutgoing(packet);
 					continue;
 				}
+
 				if (p1Goal) {
-					score1++;
+					score.x++;
 					puck.velocity.y = -1;
 					p1Goal = false;
 				}
 				else if (p2Goal) {
-					score2++;
+					score.y++;
 					puck.velocity.y = 1;
 					p2Goal = false;
 				}
-				masterSynced = false;
-				slaveSynced = false;
+				packet = Packet(PacketType::SCORE, PacketMode::REROUTE);
+				Packet::serialize(score, packet);
+				client.addOutgoing(packet);
+
+				synced = false;
 				goalTimer.restart();
 			}
-
-			//Don't translate the ball until 3 seconds after a goal (or the game start).
-			if (goalTimer.elapsed() >= 3000.0) {
+			
+			//Try and account for latency. Not sure if this is considered a hack xD. Doesn't matter, it doesn't work...
+			double goalDelay = master ? travelTime + 3000.0 : 3000.0;
+			//printf("Travel time: %f\n", travelTime);
+			if (goalTimer.elapsed() >= goalDelay) {
 				puck.position.y += puck.velocity.y;
 				puck.position.x += puck.velocity.x;
 			}
@@ -256,7 +280,7 @@ int main() {
 			if (master)
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 128);
 			render(screen);
-			printf("Player 1: %hu/5, player 2: %hu/5.\n", score1, score2);
+			printf("Player 1: %hu/5, player 2: %hu/5.\n", score.x, score.y);
 		}
 	}
 

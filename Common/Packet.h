@@ -18,9 +18,10 @@ enum class PacketType : byte {
 	PUCK_POSITION,
 	PUCK_VELOCITY,
 	OPPONENT_POSITION,
+	SCORE,
 
-	MASTER_SYNC,
-	SLAVE_SYNC,
+	LATENCY,
+	SYNC,
 
 	TEST,
 
