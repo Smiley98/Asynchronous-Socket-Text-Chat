@@ -31,19 +31,22 @@ int main() {
 	std::mutex queueMutex;
 	std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
 	
-	Timer networkTimer, updateTimer;
+	Timer networkTimer, updateTimer, goalTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
 	ClientInformation thisClientInformation;
 
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
-	Puck puck{ 5, 9, -1, -1 };
+	const Point centre{ 5, 8 };
+	Puck puck{ centre, -1, -1 };
 	Point player1{ 5, 1 };
 	Point player2{ 5, 15 };
+	unsigned short score1 = 0, score2 = 0;
+	bool p1Goal = false, p2Goal = false;
 
 	//Indicates whether this client updates the other client or vice-versa.
-	bool master = false;
+	bool master = false, masterSynced = false, slaveSynced = false;
 
 	unsigned char screen[rows][cols];
 	init(screen);
@@ -51,7 +54,7 @@ int main() {
 
 	while (true) {
 		//Do network stuff every 0.1 seconds.
-		if (networkTimer.elapsed() >= 1000.0) {
+		if (networkTimer.elapsed() >= 100.0) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
@@ -70,6 +73,14 @@ int main() {
 					Packet::deserialize(i, thisClientInformation);
 					break;
 				}
+				case PacketType::PUCK_POSITION: {
+					Packet::deserialize(i, puck.position);
+					break;
+				}
+				case PacketType::PUCK_VELOCITY: {
+					Packet::deserialize(i, puck.velocity);
+					break;
+				}
 				case PacketType::OPPONENT_POSITION: {
 					Point position;
 					Packet::deserialize(i, position);
@@ -77,6 +88,14 @@ int main() {
 						player2 = position;
 					else
 						player1 = position;
+					break;
+				}
+				case PacketType::MASTER_SYNC: {
+					masterSynced = true;
+					break;
+				}
+				case PacketType::SLAVE_SYNC: {
+					slaveSynced = true;
 					break;
 				}
 				default:
@@ -90,14 +109,31 @@ int main() {
 			}
 			if (thisClientInformation.m_id == lowest)
 				master = true;
-			if(master)
-				printf("Id: %zu (master).\n", thisClientInformation.m_id);
-			else
-				printf("Id: %zu.\n", thisClientInformation.m_id);
+
+			//if(master)
+			//	printf("Id: %zu (master).\n", thisClientInformation.m_id);
+			//else
+			//	printf("Id: %zu.\n", thisClientInformation.m_id);
+		}
+		if (allClientInfomration.size() < 2) {
+			printf("Waiting for other players. . .");
+			system("cls");
+			continue;
 		}
 		
 		if (updateTimer.elapsed() >= 100.0) {
 			updateTimer.restart();
+
+			if (score1 >= 5) {
+				system("cls");
+				printf("Player one wins!");
+				continue;
+			}
+			else if (score2 >= 5) {
+				system("cls");
+				printf("Player two wins!");
+				continue;
+			}
 
 			//Reset then copy game objects to buffer.
 			reset(screen);
@@ -124,15 +160,57 @@ int main() {
 					puckVelocityUpdate = true;
 			}
 			if (puckFutureY <= 0 || puckFutureY >= rows - 1) {
+				if (puckFutureY <= 0)
+					p2Goal = true;
+				else if (puckFutureY >= rows - 1)
+					p1Goal = true;
 				puck.velocity.y *= -1;
 				if (master)
 					puckVelocityUpdate = true;
 			}
 
-			//No more puck logic, apply velocity.
-			puck.position.y += puck.velocity.y;
-			puck.position.x += puck.velocity.x;
+			if (p1Goal || p2Goal) {
+				puck.position = centre;
+				packet = Packet(PacketType::PUCK_POSITION, PacketMode::REROUTE);
+				Packet::serialize(puck.position, packet);
+				client.addOutgoing(packet);
 
+				//Lock-step the puck reset.
+				//Sadly I don't have support for blocking sockets so I can't reliably sync the clients. Best I can do is a handshake.
+				bool synced = false;
+				if (master) {
+					synced = masterSynced;
+					packet = Packet(PacketType::SLAVE_SYNC, PacketMode::REROUTE);
+				}
+				else {
+					synced = slaveSynced;
+					packet = Packet(PacketType::MASTER_SYNC, PacketMode::REROUTE);
+				}
+				if (!synced) {
+					client.addOutgoing(packet);
+					continue;
+				}
+				if (p1Goal) {
+					score1++;
+					puck.velocity.y = -1;
+					p1Goal = false;
+				}
+				else if (p2Goal) {
+					score2++;
+					puck.velocity.y = 1;
+					p2Goal = false;
+				}
+				masterSynced = false;
+				slaveSynced = false;
+				goalTimer.restart();
+			}
+
+			//Don't translate the ball until 3 seconds after a goal (or the game start).
+			if (goalTimer.elapsed() >= 3000.0) {
+				puck.position.y += puck.velocity.y;
+				puck.position.x += puck.velocity.x;
+			}
+			
 			if(puckVelocityUpdate) {
 				packet = Packet(PacketType::PUCK_VELOCITY, PacketMode::REROUTE);
 				Packet::serialize(puck.velocity, packet);
@@ -174,8 +252,11 @@ int main() {
 			}
 
 			//Clear and render screen.
-			//setCursor(0, 0);
-			//render(screen);
+			setCursor(0, 0);
+			if (master)
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 128);
+			render(screen);
+			printf("Player 1: %hu/5, player 2: %hu/5.\n", score1, score2);
 		}
 	}
 
