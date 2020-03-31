@@ -7,6 +7,9 @@
     <Filter Include="Server">
       <UniqueIdentifier>{f4b64c18-51c7-4b5e-8f57-d893740628f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Common\spritelib">
+      <UniqueIdentifier>{b3993139-39a1-465c-a134-fafe478bcffd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\Network.cpp">
@@ -29,6 +32,27 @@
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\window.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\vector3.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\text.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\sprite.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\shapes.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\shader.cpp">
+      <Filter>Common\spritelib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\spritelib\matrix4x4.cpp">
+      <Filter>Common\spritelib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +82,33 @@
     </ClInclude>
     <ClInclude Include="..\Common\NetworkObjects.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\window.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\vector3.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\text.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\spritelib.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\sprite.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\shapes.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\shader.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\matrix4x4.h">
+      <Filter>Common\spritelib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\spritelib\debug.h">
+      <Filter>Common\spritelib</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

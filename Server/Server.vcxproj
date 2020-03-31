@@ -71,12 +71,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>../Common/include;$(IncludePath)</IncludePath>
+    <LibraryPath>../Common/lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>../Common/include;$(IncludePath)</IncludePath>
+    <LibraryPath>../Common/lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -87,6 +91,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -99,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -114,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,6 +136,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,6 +149,13 @@
     <ClCompile Include="..\Common\Address.cpp" />
     <ClCompile Include="..\Common\Network.cpp" />
     <ClCompile Include="..\Common\Packet.cpp" />
+    <ClCompile Include="..\Common\spritelib\matrix4x4.cpp" />
+    <ClCompile Include="..\Common\spritelib\shader.cpp" />
+    <ClCompile Include="..\Common\spritelib\shapes.cpp" />
+    <ClCompile Include="..\Common\spritelib\sprite.cpp" />
+    <ClCompile Include="..\Common\spritelib\text.cpp" />
+    <ClCompile Include="..\Common\spritelib\vector3.cpp" />
+    <ClCompile Include="..\Common\spritelib\window.cpp" />
     <ClCompile Include="..\Common\Timer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Server.cpp" />
@@ -154,6 +168,15 @@
     <ClInclude Include="..\Common\Network.h" />
     <ClInclude Include="..\Common\NetworkObjects.h" />
     <ClInclude Include="..\Common\Packet.h" />
+    <ClInclude Include="..\Common\spritelib\debug.h" />
+    <ClInclude Include="..\Common\spritelib\matrix4x4.h" />
+    <ClInclude Include="..\Common\spritelib\shader.h" />
+    <ClInclude Include="..\Common\spritelib\shapes.h" />
+    <ClInclude Include="..\Common\spritelib\sprite.h" />
+    <ClInclude Include="..\Common\spritelib\spritelib.h" />
+    <ClInclude Include="..\Common\spritelib\text.h" />
+    <ClInclude Include="..\Common\spritelib\vector3.h" />
+    <ClInclude Include="..\Common\spritelib\window.h" />
     <ClInclude Include="..\Common\Timer.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="ServerBase.h" />

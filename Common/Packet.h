@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <cassert>
 #include <array>
 #include <vector>
@@ -81,14 +82,14 @@ public:
 
 	template<typename T>
 	static void serialize(const T& input, PacketBase<count>& output) {
-		static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
+		//static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
 		output.buffer()[0] = 1;
 		output.write(&input, sizeof(T), sizeof(short));
 	}
 
 	template<typename T>
 	static void deserialize(const PacketBase<count>& input, T& output) {
-		static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
+		//static_assert(sizeof(short) + sizeof(T) <= PacketBase<count>::bufferSize());
 		input.read(&output, sizeof(T), sizeof(short));
 	}
 
