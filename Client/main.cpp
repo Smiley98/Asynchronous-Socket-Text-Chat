@@ -1,4 +1,5 @@
 #include "Client.h"
+#include "../Common/spritelib/spritelib.h"
 #include "../Common/Timer.h"
 #include "../Common/ClientInfo.h"
 #include "../Common/NetworkObjects.h"
@@ -13,8 +14,6 @@
 #define cols 11
 #define playersymbol 'X'
 #define pucksymbol 'O'
-#undef max
-#undef min
 #define LOGGING true
 
 void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
@@ -23,7 +22,14 @@ void reset(unsigned char screen[rows][cols]);
 void init(unsigned char screen[rows][cols]);
 void render(unsigned char screen[rows][cols]);
 
+using namespace spritelib;
 int main() {
+	Window& window = Window::get_game_window();
+	window.init("MY GAME", 1920, 1080)
+		.set_screen_size(1920, 1080)
+		.set_clear_color(0, 255, 0);
+	Text::load_font("../Common/assets/times.ttf", "TimesNewRoman");
+
 	Client client;
 	client.start();
 	client.setState(ClientState::CONSUME);
@@ -154,6 +160,10 @@ int main() {
 			if (thisClientInformation.m_id == lowest)
 				master = true;
 		}
+
+		Shapes::draw_rectangle(true, (float)(rand() % 1820), (float)(rand() % 1000), 100.0f, 80.0f);
+		window.update();
+
 		if (allClientInfomration.size() < 2) {
 			printf("Waiting for other players. . .");
 			system("cls");

@@ -23,9 +23,8 @@ int main() {
 		if (GetAsyncKeyState(52))
 			server.addLag(-0.1);
 
-		while (window.update()) {
-			Shapes::draw_rectangle(true, (float)(rand() % 1820), (float)(rand() % 1000), 100.0f, 80.0f);
-		}
+		window.update();
+		Shapes::draw_rectangle(true, (float)(rand() % 1820), (float)(rand() % 1000), 100.0f, 80.0f);
 	}
 
 	return getchar();
