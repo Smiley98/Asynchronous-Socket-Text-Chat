@@ -15,14 +15,9 @@ enum class PacketType : byte {
 	THIS_CLIENT_INFORMATION,
 
 	SET_CLIENT_STATUS,
-
-	PUCK_POSITION,
-	PUCK_VELOCITY,
-	OPPONENT_POSITION,
-	SCORE,
-
 	LATENCY,
-	SYNC,
+
+	KINEMATIC,
 
 	TEST,
 
@@ -208,14 +203,8 @@ inline std::string PacketBase<count>::typeString() const
 			return "generic";
 		case PacketType::STRING:
 			return "string";
-		case PacketType::PUCK_POSITION:
-			return "puck position";
-		case PacketType::PUCK_VELOCITY:
-			return "puck velocity";
-		case PacketType::OPPONENT_POSITION:
-			return "opponent position";
-		case PacketType::SCORE:
-			return "score";
+		case PacketType::KINEMATIC:
+			return "kinematic";
 		case PacketType::TEST:
 			return "test";
 		default:

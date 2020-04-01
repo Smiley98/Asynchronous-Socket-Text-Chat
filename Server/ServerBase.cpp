@@ -74,13 +74,7 @@ bool ServerBase::recv()
 				break;
 			}
 #if LOGGING
-			case PacketType::PUCK_POSITION:
-			case PacketType::PUCK_VELOCITY:
-			case PacketType::OPPONENT_POSITION:
-			case PacketType::SCORE:
-				Packet::deserialize(packet, data);
-				printf("Data: %hi, %hi.", data.x, data.y);
-				break;
+			
 #endif
 		}
 

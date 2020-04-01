@@ -41,6 +41,8 @@ namespace spritelib
 			
 			double dot(Vector3 a_other);
 			double magnitude();
+
+			static Vector3 lerp(Vector3 a, Vector3 b, double t);
 		};
 	}
 }

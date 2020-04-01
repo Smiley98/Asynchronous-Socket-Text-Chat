@@ -14,42 +14,19 @@
 using namespace spritelib;
 
 //Mouse x and y, delta mouse x and y.
-int mx = 0, my = 0, dmx = 0, dmy = 0;
-bool moved = false;
+int mx = 0, my = 0;
 void MouseFunc(Window::Button a_button, int a_mouseX, int a_mouseY, Window::EventType a_eventType)
 {
 	switch (a_eventType)
 	{
 	case Window::EventType::MouseMoved:
 	{
-		moved = true;
-		int pmx = mx;
-		int pmy = my;
 		mx = a_mouseX;
 		my = a_mouseY;
-		dmx = mx - pmx;
-		dmy = my - pmy;
 	}
 	break;
-	//case Window::EventType::MouseButtonReleased:
-	//{
-	//
-	//}
-	//break;
 	}
 }
-
-struct Particle {
-	math::Vector3 position;
-	math::Vector3 velocity;
-	math::Vector3 acceleration;
-};
-
-struct Kinematic {
-	float position;
-	float velocity;
-	float acceleration;
-};
 
 int main() {
 	Window& window = Window::get_game_window();
@@ -58,18 +35,13 @@ int main() {
 		.set_screen_size(/*1920, 1080*/640, 480)
 		.set_clear_color(0, 255, 0);
 	Text::load_font("../Common/assets/times.ttf", "TimesNewRoman");
+	Shapes::set_color(1.0f, 1.0f, 1.0f);
 
 	Client client;
 	client.start();
 	client.setState(ClientState::CONSUME);
-
-	std::vector<Particle> particles(5);
-	for (auto& particle : particles) {
-		particle.position = math::Vector3(rand() % 600, rand() % 440);
-		particle.velocity = 100.0;
-	}
 	
-	Timer networkTimer, latencyTimer, frameTimer, continuousTimer;
+	Timer networkTimer, latencyTimer, frameTimer, continuousTimer, correctionTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
@@ -78,18 +50,22 @@ int main() {
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
 
 	//Indicates whether this client updates the other client or vice-versa.
-	bool master = false;
-	//Sync status. Master sends to self (for an attempt at round-trip latency) and slave, slave just accepts.
-	bool synced = false;
+	bool host = false;
 
 	//A hack to measure latency in attempt to sync.
 	double latency = 0.0;
 	double lag = 0.0;
 	bool measuringLatency = false;
 
-	math::Vector3 position(320, 240);
-	math::Vector3 velocity;
-	math::Vector3 acceleration;
+	//math::Vector3 position(320, 240);
+	math::Vector3 localPosition(320, 240);
+	math::Vector3 localVelocity;
+	math::Vector3 localAcceleration;
+
+	math::Vector3 remotePosition = localPosition;
+	math::Vector3 remoteVelocity;
+	math::Vector3 remoteAcceleration;
+	bool kinematicFlag = false;
 
 	const double velocityScalar = 75.0;
 	const double accelerationScalar = 125.0;
@@ -112,11 +88,6 @@ int main() {
 				latencyTimer.restart();
 			}
 
-			if (moved) {
-				moved = false;
-
-			}
-
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
 #if LOGGING
@@ -134,13 +105,20 @@ int main() {
 					Packet::deserialize(i, thisClientInformation);
 					break;
 				}
-				case PacketType::SYNC: {
-					synced = true;
-					break;
-				}
 				case PacketType::LATENCY: {
 					latency = latencyTimer.elapsed();
 					measuringLatency = false;
+					break;
+				}
+				case PacketType::KINEMATIC: {
+					Kinematic kinematic;
+					Packet::deserialize(i, kinematic);
+					//Snapping for now.
+					remotePosition = kinematic.position;
+					remoteVelocity = kinematic.velocity;
+					remoteAcceleration = kinematic.acceleration;
+					kinematicFlag = true;
+					correctionTimer.restart();
 					break;
 				}
 				default:
@@ -153,42 +131,78 @@ int main() {
 					lowest = clientInformation.m_id;
 			}
 			if (thisClientInformation.m_id == lowest)
-				master = true;
+				host = true;
 		}
 		
 		//Game logic:
 		window.update();
 
 		//Do latency compensation prediction (dead reckoning) if you're not the host.
-		float dt = master ? frameTime : frameTime + latency;
+		float dt = host ? frameTime : frameTime + latency;
 
-		//Shapes::set_color(1.0f, 0.0f, 0.0f);
-		//for (auto& particle : particles) {
-		//	math::Vector3 target(mx, my);
-		//	math::Vector3 direction = target.subtract(particle.position);
-		//	direction = direction.normalize();
-		//	particle.velocity.add(math::Vector3(sin(continuousTimer.elapsed()) * 100.0));
-		//	particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
-		//	Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
-		//}
+		math::Vector3 finalPosition;
+		//Calculate physics based off mouse cursor if we're the host.
+		if (host) {
+			math::Vector3 target(mx, my);
+			math::Vector3 direction = target.subtract(localPosition).normalize();
 
+			localVelocity = direction.multiply(velocityScalar);
+			localAcceleration.add(direction.multiply(accelerationScalar));
+
+			math::Vector3 velocityComponent = localVelocity.multiply(dt);
+			math::Vector3 accelerationComponent = localAcceleration.multiply(0.5 * dt * dt);
+
+			localPosition = localPosition.add(velocityComponent.add(accelerationComponent));
+			finalPosition = localPosition;
+
+			packet = Packet(PacketType::KINEMATIC, PacketMode::REROUTE);
+			Kinematic kinematic{ localPosition, localVelocity, localAcceleration };
+			Packet::serialize(kinematic, packet);
+			client.addOutgoing(packet);
+		}
+		
+		//Otherwise, use the host's physics and account for latency.
+		else {
+			//Interpolate between local and remote over the course of latency milliseconds.
+			math::Vector3 velocityComponent = remoteVelocity.multiply(dt);
+			math::Vector3 accelerationComponent = remoteAcceleration.multiply(0.5 * dt * dt);
+			remotePosition = remotePosition.add(velocityComponent.add(accelerationComponent));
+			finalPosition = remotePosition;
+
+			//This is probably flawed because we're not incrementing remotePosition.
+			//In other words, I'm not good enough at programming to blend between local and remote for now ;)
+			/*localPosition = remotePosition.add(velocityComponent.add(accelerationComponent));
+			static double t = 0.0;
+			if (kinematicFlag) {
+				t = correctionTimer.elapsed() / latency;
+				if (t >= 1.0)
+					kinematicFlag = false;
+			}
+			finalPosition = math::Vector3::lerp(localPosition, remotePosition, t);*/
+		}
+		Shapes::draw_rectangle(true, finalPosition.x, finalPosition.y, 50.0f, 37.5f);
+
+		//Uncomment to test locally.
+		/*
 		math::Vector3 target(mx, my);
-		math::Vector3 direction = target.subtract(position).normalize();
+		math::Vector3 direction = target.subtract(localPosition).normalize();
 
-		velocity = direction.multiply(velocityScalar);
-		acceleration.x += direction.x * accelerationScalar;
-		acceleration.y += direction.y * accelerationScalar;
+		localVelocity = direction.multiply(velocityScalar);
+		localAcceleration.add(direction.multiply(accelerationScalar));
 
-		math::Vector3 velocityComponent = velocity.multiply(dt);
-		math::Vector3 accelerationComponent = acceleration.multiply(0.5 * dt * dt);
+		math::Vector3 velocityComponent = localVelocity.multiply(dt);
+		math::Vector3 accelerationComponent = localAcceleration.multiply(0.5 * dt * dt);
 
-		//First order: p2 = p1 + v * dt
-		//Second order: p2 = p1 + v * dt + 0.5 * a * dt * dt <---
-		position = position.add(velocityComponent.add(accelerationComponent));
+		localPosition = localPosition.add(velocityComponent.add(accelerationComponent));
+		finalPosition = localPosition;
 
-		Shapes::set_color(1.0f, 1.0f, 1.0f);
-		Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
-		Shapes::draw_rectangle(true, position.x, position.y, 50.0f, 37.5f);
+		packet = Packet(PacketType::KINEMATIC, PacketMode::REROUTE);
+		Kinematic kinematic{ localPosition, localVelocity, localAcceleration };
+		Packet::serialize(kinematic, packet);
+		client.addOutgoing(packet);
+
+		Shapes::draw_rectangle(true, finalPosition.x, finalPosition.y, 50.0f, 37.5f);
+		//*/
 
 		//Lag switches.
 		if (GetAsyncKeyState(49)) {

@@ -94,6 +94,11 @@ namespace spritelib
 			return (double)sqrt(x * x + y * y + z * z);
 		}
 
+		Vector3 Vector3::lerp(Vector3 a, Vector3 b, double t)
+		{
+			return (b.subtract(a)).multiply(t);
+		}
+
 		Vector3 Vector3::normalize()
 		{
 			return divide(Vector3(magnitude()));
