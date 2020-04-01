@@ -10,23 +10,41 @@
 #include <thread>
 #include <mutex>
 #include <Windows.h>
-#define rows 17
-#define cols 11
-#define playersymbol 'X'
-#define pucksymbol 'O'
 #define LOGGING true
-
-void pollInput(std::queue<std::string>& queue, std::mutex& mutex);
-void setCursor(short x, short y);
-void reset(unsigned char screen[rows][cols]);
-void init(unsigned char screen[rows][cols]);
-void render(unsigned char screen[rows][cols]);
-
 using namespace spritelib;
+
+//Mouse x and y.
+int mx = 0, my = 0;
+bool moved = false;
+void MouseFunc(Window::Button a_button, int a_mouseX, int a_mouseY, Window::EventType a_eventType)
+{
+	switch (a_eventType)
+	{
+	case Window::EventType::MouseMoved:
+	{
+		moved = true;
+		mx = a_mouseX;
+		my = a_mouseY;
+	}
+	break;
+	//case Window::EventType::MouseButtonReleased:
+	//{
+	//
+	//}
+	//break;
+	}
+}
+
+struct Particle {
+	math::Vector3 position;
+	math::Vector3 velocity;
+};
+
 int main() {
 	Window& window = Window::get_game_window();
-	window.init("MY GAME", 1920, 1080)
-		.set_screen_size(1920, 1080)
+	window.init("MY GAME", /*1920, 1080*/640, 480)
+		.set_mouse_callback(MouseFunc)
+		.set_screen_size(/*1920, 1080*/640, 480)
 		.set_clear_color(0, 255, 0);
 	Text::load_font("../Common/assets/times.ttf", "TimesNewRoman");
 
@@ -34,24 +52,17 @@ int main() {
 	client.start();
 	client.setState(ClientState::CONSUME);
 
-	//An artifact from assignment 1 ;)
-	//std::queue<std::string> inputQueue;
-	//std::mutex queueMutex;
-	//std::thread(pollInput, std::ref(inputQueue), std::ref(queueMutex)).detach();
+	std::vector<Particle> particles(5);
+	for (auto& particle : particles)
+		particle.velocity = 5.0f;
 	
-	Timer networkTimer, updateTimer, goalTimer, latencyTimer;
+	Timer networkTimer, updateTimer, latencyTimer, frameTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
 	ClientInformation thisClientInformation;
 
 	Packet packet(PacketType::GENERIC, PacketMode::ONE_WAY);
-	const Point centre{ 5, 8 };
-	Puck puck{ centre, -1, -1 };
-	Point player1{ 5, 1 };
-	Point player2{ 5, 15 };
-	Point score{ 0, 0 };//unsigned short score1 = 0, score2 = 0;//Lol its easier to serialize a 2 component number despite being unintuitive.
-	bool p1Goal = false, p2Goal = false;
 
 	//Indicates whether this client updates the other client or vice-versa.
 	bool master = false;
@@ -60,16 +71,21 @@ int main() {
 
 	//A hack to measure latency in attempt to sync.
 	double latency = 0.0;
+	double lag = 0.0;
 	bool measuringLatency = false;
 
-	double lag = 0.0;
+	//No frame limiting for now, just run as fast as possible so network latency is evident.
+	double updateDelay = 0.0;
 
-	unsigned char screen[rows][cols];
-	init(screen);
-	reset(screen);
+	uint64_t counter = 0;
+	float dt1 = 0.0f, dt2 = 0.0f;
+	float px = 0.0f, py = 0.0f;
+	float vx = 0.0f, vy = 0.0f;
 
 	while (true) {
-		//Do network stuff every 0.1 seconds.
+		counter++;
+		frameTimer.restart();
+		//Do routine network stuff every 0.1 seconds.
 		if (networkTimer.elapsed() >= 100.0 + lag) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
@@ -84,12 +100,16 @@ int main() {
 				latencyTimer.restart();
 			}
 
+			if (moved) {
+				moved = false;
+
+			}
+
 			//Deserialize all incoming packets.
 			for (const Packet& i : incoming) {
 #if LOGGING
 				if (!i.typeString().empty()) {
-					setCursor(cols, 0);
-					printf("Client received packet of type %s.", i.typeString().c_str());
+					printf("Client received packet of type %s\n.", i.typeString().c_str());
 				}
 #endif
 				switch (i.getType())
@@ -102,45 +122,8 @@ int main() {
 					Packet::deserialize(i, thisClientInformation);
 					break;
 				}
-				case PacketType::PUCK_POSITION: {
-					Packet::deserialize(i, puck.position);
-#if LOGGING
-					setCursor(cols, 1);
-					printf("Data: %hi, %hi.", puck.position.x, puck.position.y);
-#endif
-					break;
-				}
-				case PacketType::PUCK_VELOCITY: {
-					Packet::deserialize(i, puck.velocity);
-#if LOGGING
-					setCursor(cols, 1);
-					printf("Data: %hi, %hi.", puck.velocity.x, puck.velocity.y);
-#endif
-					break;
-				}
-				case PacketType::OPPONENT_POSITION: {
-					Point position;
-					Packet::deserialize(i, position);
-					if (master)
-						player2 = position;
-					else
-						player1 = position;
-#if LOGGING
-					setCursor(cols, 1);
-					printf("Data: %hi, %hi.", position.x, position.y);
-#endif
-					break;
-				}
 				case PacketType::SYNC: {
 					synced = true;
-					break;
-				}
-				case PacketType::SCORE: {
-					Packet::deserialize(i, score);
-#if LOGGING
-					setCursor(cols, 1);
-					printf("Data: %hi, %hi.", score.x, score.y);
-#endif
 					break;
 				}
 				case PacketType::LATENCY: {
@@ -160,133 +143,28 @@ int main() {
 			if (thisClientInformation.m_id == lowest)
 				master = true;
 		}
-
-		Shapes::draw_rectangle(true, (float)(rand() % 1820), (float)(rand() % 1000), 100.0f, 80.0f);
-		window.update();
-
-		if (allClientInfomration.size() < 2) {
-			printf("Waiting for other players. . .");
-			system("cls");
-			continue;
-		}
 		
-		if (updateTimer.elapsed() >= 100.0) {
+		if (updateTimer.elapsed() >= updateDelay) {
 			updateTimer.restart();
+			counter % 2 == 0 ? dt1 = frameTimer.elapsed() : dt2 = frameTimer.elapsed();
 
-			if (score.x >= 5) {
-				system("cls");
-				printf("Player one wins!");
-				continue;
-			}
-			else if (score.y >= 5) {
-				system("cls");
-				printf("Player two wins!");
-				continue;
-			}
-
-			//Reset then copy game objects to buffer.
-			reset(screen);
-			screen[player1.y][player1.x] = playersymbol;
-			screen[player2.y][player2.x] = playersymbol;
-			screen[puck.position.y][puck.position.x] = pucksymbol;
-			bool puckPositionUpdate = false;
-			bool puckVelocityUpdate = false;
-
-			//Player collision.
-			if (screen[puck.position.y + puck.velocity.y][puck.position.x + puck.velocity.x] == playersymbol) {
-				puck.velocity.x *= -1;
-				puck.velocity.y *= -1;
-				if (master)
-					puckVelocityUpdate = true;
+			//Do latency compensation prediction (dead reckoning) if you're not the host.
+			float dt = master ? dt2 - dt1 : (dt2 - dt1) + latency;
+			//px = px + ax * dt;
+			//py = py + ay * dt;
+			printf("%f\n", dt);
+			Shapes::set_color(1.0f, 0.0f, 0.0f);
+			for (auto& particle : particles) {
+				math::Vector3 target(mx, my);
+				math::Vector3 direction = target.subtract(particle.position);
+				direction = direction.normalize();
+				//particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
+				Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
 			}
 
-			//Border collision.
-			short puckFutureX = puck.position.x + puck.velocity.x;
-			short puckFutureY = puck.position.y + puck.velocity.y;
-			if (puckFutureX <= 0 || puckFutureX >= cols - 1) {
-				puck.velocity.x *= -1;
-				if (master)
-					puckVelocityUpdate = true;
-			}
-			if (puckFutureY <= 0 || puckFutureY >= rows - 1) {
-				if (puckFutureY <= 0)
-					p2Goal = true;
-				else if (puckFutureY >= rows - 1)
-					p1Goal = true;
-				puck.velocity.y *= -1;
-				if (master)
-					puckVelocityUpdate = true;
-			}
-
-			if (p1Goal || p2Goal) {
-				puck.position = centre;
-				packet = Packet(PacketType::PUCK_POSITION, PacketMode::REROUTE);
-				Packet::serialize(puck.position, packet);
-				client.addOutgoing(packet);
-				
-				//Idk why this doesn't work :( Maybe cause this game is frame-based xD.
-				//The proper way to do lock-step would be with TCP sockets which I did not plan for and thus cannot reasonably support at this time.
-				if (!synced) {
-					packet = Packet(PacketType::SYNC, PacketMode::BROADCAST);
-					client.addOutgoing(packet);
-					continue;
-				}
-
-				if (p1Goal) {
-					score.x++;
-					puck.velocity.y = -1;
-					p1Goal = false;
-				}
-				else if (p2Goal) {
-					score.y++;
-					puck.velocity.y = 1;
-					p2Goal = false;
-				}
-				packet = Packet(PacketType::SCORE, PacketMode::REROUTE);
-				Packet::serialize(score, packet);
-				client.addOutgoing(packet);
-
-				synced = false;
-				goalTimer.restart();
-			}
-			
-			//Try and account for latency. Not sure if this is considered a hack xD. Doesn't matter, it doesn't work...
-			double goalDelay = master ? latency + 3000.0 : 3000.0;
-			//printf("Travel time: %f\n", travelTime);
-			if (goalTimer.elapsed() >= goalDelay) {
-				puck.position.y += puck.velocity.y;
-				puck.position.x += puck.velocity.x;
-			}
-			
-			if(puckVelocityUpdate) {
-				packet = Packet(PacketType::PUCK_VELOCITY, PacketMode::REROUTE);
-				Packet::serialize(puck.velocity, packet);
-				client.addOutgoing(packet);
-			}
-
-			bool input = false;
-			if (GetAsyncKeyState(VK_LEFT)) {
-				input = true;
-				if (master) {
-					if (player1.x - 1 > 0)
-						player1.x--;
-				}
-				else {
-					if (player2.x - 1 > 0)
-						player2.x--;
-				}
-			}
-			else if (GetAsyncKeyState(VK_RIGHT)) {
-				input = true;
-				if (master) {
-					if (player1.x + 1 < cols - 1)
-						player1.x++;
-				}
-				else {
-					if (player2.x + 1 < cols - 1)
-						player2.x++;
-				}
-			}
+			Shapes::set_color(1.0f, 1.0f, 1.0f);
+			Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
+			window.update();
 
 			//Lag switches.
 			if (GetAsyncKeyState(49)) {
@@ -298,70 +176,24 @@ int main() {
 				printf("New lag: %f.\n", lag);
 			}
 
-			//Send the position of this client's player to the other client.
-			if (input) {
-				packet = Packet(PacketType::OPPONENT_POSITION, PacketMode::REROUTE);
-				if (master)
-					Packet::serialize(player1, packet);
-				else
-					Packet::serialize(player2, packet);
-				client.addOutgoing(packet);
+			//Sticking with the mouse.
+			//if (GetAsyncKeyState(VK_LEFT)) {
+			//
+			//}
+			//if (GetAsyncKeyState(VK_RIGHT)) {
+			//
+			//}
+			//if (GetAsyncKeyState(VK_UP)) {
+			//
+			//}
+			//if (GetAsyncKeyState(VK_DOWN)) {
+			//
+			//}
+			if (GetAsyncKeyState(VK_ESCAPE)) {
+				exit(0);
 			}
-
-			//Clear and render screen.
-			setCursor(0, 0);
-			if (master)
-				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 128);
-			render(screen);
-			printf("Player 1: %hi/5, player 2: %hi/5.\n", score.x, score.y);
 		}
 	}
 
 	return getchar();
-}
-
-void pollInput(std::queue<std::string>& queue, std::mutex& mutex) {
-	while (true) {
-		std::string line;
-		std::getline(std::cin, line);
-		line += "\n";
-		mutex.lock();
-		queue.push(line);
-		mutex.unlock();
-	}
-}
-
-void setCursor(short x, short y) {
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { x, y });
-}
-
-void reset(unsigned char screen[rows][cols]) {
-	//Zero everything excluding borders.
-	for (int i = 1; i < rows - 1; i++) {
-		for (int j = 1; j < cols - 1; j++) {
-			screen[i][j] = ' ';
-		}
-	}
-}
-
-void init(unsigned char screen[rows][cols]) {
-	//Horizontal borders.
-	for (int i = 0; i < rows; i++) {
-		screen[i][0] = '|';
-		screen[i][cols - 1] = '|';
-	}
-	//Vertical borders.
-	for (int i = 0; i < cols; i++) {
-		screen[0][i] = '-';
-		screen[rows - 1][i] = '-';
-	}
-}
-
-void render(unsigned char screen[rows][cols]) {
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-			printf("%c", screen[i][j]);
-		}
-		printf("\n");
-	}
 }

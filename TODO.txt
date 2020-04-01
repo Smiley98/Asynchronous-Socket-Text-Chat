@@ -8,3 +8,10 @@ Would start looking like Dunia where there's macros to make callback functions w
 
 Currently not worth it to make this elaborate protocol because the only current use case is concatenating addresses for multicasting. Also can't even lift existing serialize/deserialize code into multi-serialize/deserialize code because deserialize uses raw bytes rather than templated objects (because there's no server-side mechanism to deduce the type and implementing said mechanism isn't practical).
 TLDR I don't have the most future-proof serialize/deserialize algorithms but based on the current needs of the library its appropriate.
+
+So for A2 convergence is literally just lerp?
+Make a master client that controls a rectangle with acceleration and velocity, then I guess lerp physics parameters on slave clients.
+Basically I have to decide whether I want things to converge, or snap.
+For the basic prototype, just make a thing that lerps towards the next position.
+There's also time mechanism to speed up high latency players (or slow down low latency players but that sounds less than ideal).
+I'm struggling to come up with a good demo because many objects either have no physics (mouse cursor), or they follow predefined paths (kinematic equations).
