@@ -3,8 +3,8 @@
 #include "../Common/NetworkObjects.h"
 #include "../Common/Multicast.h"
 #include <iostream>
-#define DISCONNET_FREQUENCY 5000.0
-#define UPDATE_FREQUENCY 100.0
+#define DISCONNET_FREQUENCY 5.0
+#define UPDATE_FREQUENCY 0.1
 #define LOGGING true
 
 size_t ServerBase::s_id = 0;
@@ -74,7 +74,15 @@ bool ServerBase::recv()
 				break;
 			}
 #if LOGGING
-			
+			case PacketType::KINEMATIC: {
+				Kinematic kinematic;
+				Packet::deserialize(packet, kinematic);
+				//No need to output the z component, but you can if you want.
+				printf("Position: %f %f.\n", kinematic.position.x, kinematic.position.y/*, kinematic.position.z*/);
+				printf("Velocity: %f %f.\n", kinematic.velocity.x, kinematic.velocity.y/*, kinematic.velocity.z*/);
+				printf("Acceleration: %f %f.\n", kinematic.acceleration.x, kinematic.acceleration.y/*, kinematic.acceleration.z*/);
+				break;
+			}
 #endif
 		}
 

@@ -34,7 +34,7 @@ int main() {
 		.set_mouse_callback(MouseFunc)
 		.set_screen_size(/*1920, 1080*/640, 480)
 		.set_clear_color(0, 255, 0);
-	Text::load_font("../Common/assets/times.ttf", "TimesNewRoman");
+	//Text::load_font("../Common/assets/times.ttf", "TimesNewRoman");
 	Shapes::set_color(1.0f, 1.0f, 1.0f);
 
 	Client client;
@@ -74,7 +74,7 @@ int main() {
 	while (true) {
 		frameTimer.restart();
 		//Do routine network stuff every 0.1 seconds.
-		if (networkTimer.elapsed() >= 100.0 + lag) {
+		if (networkTimer.elapsed() >= 0.1 + lag) {
 			networkTimer.restart();
 			client.copyIncoming(incoming);
 
@@ -133,6 +133,9 @@ int main() {
 			if (thisClientInformation.m_id == lowest)
 				host = true;
 		}
+
+		if (allClientInfomration.size() < 2)
+			continue;
 		
 		//Game logic:
 		window.update();
@@ -168,17 +171,6 @@ int main() {
 			math::Vector3 accelerationComponent = remoteAcceleration.multiply(0.5 * dt * dt);
 			remotePosition = remotePosition.add(velocityComponent.add(accelerationComponent));
 			finalPosition = remotePosition;
-
-			//This is probably flawed because we're not incrementing remotePosition.
-			//In other words, I'm not good enough at programming to blend between local and remote for now ;)
-			/*localPosition = remotePosition.add(velocityComponent.add(accelerationComponent));
-			static double t = 0.0;
-			if (kinematicFlag) {
-				t = correctionTimer.elapsed() / latency;
-				if (t >= 1.0)
-					kinematicFlag = false;
-			}
-			finalPosition = math::Vector3::lerp(localPosition, remotePosition, t);*/
 		}
 		Shapes::draw_rectangle(true, finalPosition.x, finalPosition.y, 50.0f, 37.5f);
 
