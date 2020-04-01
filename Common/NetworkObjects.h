@@ -9,9 +9,9 @@ struct Puck {
     Point velocity;
 };
 
-struct Kinematic {
-    float x;
-    float y;
-    float velocity;
-    float acceleration;
-};
+//struct Kinematic {
+//    float x;
+//    float y;
+//    float velocity;
+//    float acceleration;
+//};

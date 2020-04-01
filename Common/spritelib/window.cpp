@@ -167,14 +167,14 @@ namespace spritelib
 	}
 
 	bool Window::update(int a_targetFPS)
-	{	//No frame limiting for me!
-		//do
-		//{	// FPS limiter. This can essentially be turned off by setting a_targetFPS to like, 9999
-		//	m_stop = std::chrono::high_resolution_clock::now();
-		//	using sec = std::chrono::duration<float>;
-		//	m_deltaTime = std::chrono::duration_cast<sec>(m_stop - m_start).count();
-		//} while (1.0f / m_deltaTime >= a_targetFPS);
-		//m_start = m_stop;
+	{
+		do
+		{	// FPS limiter. This can essentially be turned off by setting a_targetFPS to like, 9999
+			m_stop = std::chrono::high_resolution_clock::now();
+			using sec = std::chrono::duration<float>;
+			m_deltaTime = std::chrono::duration_cast<sec>(m_stop - m_start).count();
+		} while (1.0f / m_deltaTime >= a_targetFPS);
+		m_start = m_stop;
 
 		sf::Event event;
 		while (m_window->pollEvent(event))

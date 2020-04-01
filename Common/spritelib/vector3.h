@@ -7,7 +7,7 @@ namespace spritelib
 		class Vector3
 		{
 		public:
-			float x, y, z;
+			double x, y, z;
 
 			static Vector3 one;
 			static Vector3 zero;
@@ -20,27 +20,27 @@ namespace spritelib
 			static Vector3 backward;
 
 			Vector3();
-			Vector3(float a_value);
-			Vector3(float a_x, float a_y);
-			Vector3(float a_x, float a_y, float a_z);
+			Vector3(double a_value);
+			Vector3(double a_x, double a_y);
+			Vector3(double a_x, double a_y, double a_z);
 
 			Vector3 multiply(Vector3 a_other);
-			Vector3 multiply(float a_other);
+			Vector3 multiply(double a_other);
 
 			Vector3 divide(Vector3 a_other);
-			Vector3 divide(float a_other);
+			Vector3 divide(double a_other);
 
 			Vector3 add(Vector3 a_other);
-			Vector3 add(float a_other);
+			Vector3 add(double a_other);
 
 			Vector3 subtract(Vector3 a_other);
-			Vector3 subtract(float a_other);
+			Vector3 subtract(double a_other);
 
 			Vector3 cross(Vector3 a_other);
 			Vector3 normalize();
 			
-			float dot(Vector3 a_other);
-			float magnitude();
+			double dot(Vector3 a_other);
+			double magnitude();
 		};
 	}
 }

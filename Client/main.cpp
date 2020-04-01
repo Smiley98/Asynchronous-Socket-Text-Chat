@@ -38,6 +38,13 @@ void MouseFunc(Window::Button a_button, int a_mouseX, int a_mouseY, Window::Even
 struct Particle {
 	math::Vector3 position;
 	math::Vector3 velocity;
+	math::Vector3 acceleration;
+};
+
+struct Kinematic {
+	float position;
+	float velocity;
+	float acceleration;
 };
 
 int main() {
@@ -52,11 +59,13 @@ int main() {
 	client.start();
 	client.setState(ClientState::CONSUME);
 
-	std::vector<Particle> particles(1);
-	for (auto& particle : particles)
-		particle.velocity = 50.0f;
+	std::vector<Particle> particles(5);
+	for (auto& particle : particles) {
+		particle.position = math::Vector3(rand() % 600, rand() % 440);
+		particle.velocity = 100.0;
+	}
 	
-	Timer networkTimer, updateTimer, latencyTimer, frameTimer;
+	Timer networkTimer, latencyTimer, frameTimer, continuousTimer;
 	PacketBuffer incoming;
 
 	std::vector<ClientInformation> allClientInfomration;
@@ -74,10 +83,7 @@ int main() {
 	double lag = 0.0;
 	bool measuringLatency = false;
 
-	//No frame limiting for now, just run as fast as possible so network latency is evident.
-	double updateDelay = 0.0;
 	double frameTime = 0.0;
-
 	while (true) {
 		frameTimer.restart();
 		//Do routine network stuff every 0.1 seconds.
@@ -139,55 +145,37 @@ int main() {
 				master = true;
 		}
 		
-		if (updateTimer.elapsed() >= updateDelay) {
-			updateTimer.restart();
+		//Game logic:
+		window.update();
 
-			//Do latency compensation prediction (dead reckoning) if you're not the host.
-			float dt = master ? frameTime : frameTime + latency;
+		//Do latency compensation prediction (dead reckoning) if you're not the host.
+		float dt = master ? frameTime : frameTime + latency;
 
-			printf("%f\n", dt);
-			Shapes::set_color(1.0f, 0.0f, 0.0f);
-			for (auto& particle : particles) {
-				particle.position = particle.position.add(particle.velocity.multiply(dt));
-				printf("%f %f\n", particle.position.x, particle.position.y);
-				Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
-				//math::Vector3 target(mx, my);
-				//math::Vector3 direction = target.subtract(particle.position);
-				//direction = direction.normalize();
-				//particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
-				//Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
-			}
+		//Shapes::set_color(1.0f, 0.0f, 0.0f);
+		//for (auto& particle : particles) {
+		//	math::Vector3 target(mx, my);
+		//	math::Vector3 direction = target.subtract(particle.position);
+		//	direction = direction.normalize();
+		//	particle.velocity.add(math::Vector3(sin(continuousTimer.elapsed()) * 100.0));
+		//	particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
+		//	Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
+		//}
 
-			Shapes::set_color(1.0f, 1.0f, 1.0f);
-			//Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
-			window.update();
+		Shapes::set_color(1.0f, 1.0f, 1.0f);
+		Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
 
-			//Lag switches.
-			if (GetAsyncKeyState(49)) {
-				lag += 100.0;
-				printf("New lag: %f.\n", lag);
-			}
-			else if (GetAsyncKeyState(50)) {
-				lag -= 100.0;
-				printf("New lag: %f.\n", lag);
-			}
+		//Lag switches.
+		if (GetAsyncKeyState(49)) {
+			lag += 100.0;
+			printf("New lag: %f.\n", lag);
+		}
+		else if (GetAsyncKeyState(50)) {
+			lag -= 100.0;
+			printf("New lag: %f.\n", lag);
+		}
 
-			//Sticking with the mouse.
-			//if (GetAsyncKeyState(VK_LEFT)) {
-			//
-			//}
-			//if (GetAsyncKeyState(VK_RIGHT)) {
-			//
-			//}
-			//if (GetAsyncKeyState(VK_UP)) {
-			//
-			//}
-			//if (GetAsyncKeyState(VK_DOWN)) {
-			//
-			//}
-			if (GetAsyncKeyState(VK_ESCAPE)) {
-				exit(0);
-			}
+		if (GetAsyncKeyState(VK_ESCAPE)) {
+			exit(0);
 		}
 		frameTime = frameTimer.elapsed();
 	}

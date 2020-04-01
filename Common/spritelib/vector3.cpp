@@ -23,17 +23,17 @@ namespace spritelib
 			z = 0.0f;
 		}
 
-		Vector3::Vector3(float a_value) : Vector3(a_value, a_value, a_value)
+		Vector3::Vector3(double a_value) : Vector3(a_value, a_value, a_value)
 		{
 
 		}
 
-		Vector3::Vector3(float a_x, float a_y) : Vector3(a_x, a_y, 0.0f)
+		Vector3::Vector3(double a_x, double a_y) : Vector3(a_x, a_y, 0.0f)
 		{
 
 		}
 
-		Vector3::Vector3(float a_x, float a_y, float a_z)
+		Vector3::Vector3(double a_x, double a_y, double a_z)
 		{
 			x = a_x;
 			y = a_y;
@@ -45,7 +45,7 @@ namespace spritelib
 			return Vector3(x * a_other.x, y * a_other.y, z * a_other.z);
 		}
 
-		Vector3 Vector3::multiply(float a_other)
+		Vector3 Vector3::multiply(double a_other)
 		{
 			return Vector3(x * a_other, y * a_other, z * a_other);
 		}
@@ -55,7 +55,7 @@ namespace spritelib
 			return Vector3(x / a_other.x, y / a_other.y, z / a_other.z);
 		}
 
-		Vector3 Vector3::divide(float a_other)
+		Vector3 Vector3::divide(double a_other)
 		{
 			return Vector3(x / a_other, y / a_other, z / a_other);
 		}
@@ -65,7 +65,7 @@ namespace spritelib
 			return Vector3(x + a_other.x, y + a_other.y, z + a_other.z);
 		}
 
-		Vector3 Vector3::add(float a_other)
+		Vector3 Vector3::add(double a_other)
 		{
 			return Vector3(x + a_other, y + a_other, z + a_other);
 		}
@@ -75,23 +75,23 @@ namespace spritelib
 			return Vector3(x - a_other.x, y - a_other.y, z - a_other.z);
 		}
 
-		Vector3 Vector3::subtract(float a_other)
+		Vector3 Vector3::subtract(double a_other)
 		{
 			return Vector3(x - a_other, y - a_other, z - a_other);
 		}
 
 		Vector3 Vector3::cross(Vector3 a_other)
 		{
-			float newX = y * a_other.z - z * a_other.y;
-			float newY = z * a_other.x - x * a_other.z;
-			float newZ = x * a_other.y - y * a_other.x;
+			double newX = y * a_other.z - z * a_other.y;
+			double newY = z * a_other.x - x * a_other.z;
+			double newZ = x * a_other.y - y * a_other.x;
 
 			return Vector3(newX, newY, newZ);
 		}
 
-		float Vector3::magnitude()
+		double Vector3::magnitude()
 		{
-			return (float)sqrt(x * x + y * y + z * z);
+			return (double)sqrt(x * x + y * y + z * z);
 		}
 
 		Vector3 Vector3::normalize()
@@ -99,7 +99,7 @@ namespace spritelib
 			return divide(Vector3(magnitude()));
 		}
 
-		float Vector3::dot(Vector3 a_other)
+		double Vector3::dot(Vector3 a_other)
 		{
 			return (x * a_other.x + y * a_other.y + z * a_other.z);
 		}
