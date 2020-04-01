@@ -13,8 +13,8 @@
 #define LOGGING true
 using namespace spritelib;
 
-//Mouse x and y.
-int mx = 0, my = 0;
+//Mouse x and y, delta mouse x and y.
+int mx = 0, my = 0, dmx = 0, dmy = 0;
 bool moved = false;
 void MouseFunc(Window::Button a_button, int a_mouseX, int a_mouseY, Window::EventType a_eventType)
 {
@@ -23,8 +23,12 @@ void MouseFunc(Window::Button a_button, int a_mouseX, int a_mouseY, Window::Even
 	case Window::EventType::MouseMoved:
 	{
 		moved = true;
+		int pmx = mx;
+		int pmy = my;
 		mx = a_mouseX;
 		my = a_mouseY;
+		dmx = mx - pmx;
+		dmy = my - pmy;
 	}
 	break;
 	//case Window::EventType::MouseButtonReleased:
@@ -82,6 +86,13 @@ int main() {
 	double latency = 0.0;
 	double lag = 0.0;
 	bool measuringLatency = false;
+
+	math::Vector3 position(320, 240);
+	math::Vector3 velocity;
+	math::Vector3 acceleration;
+
+	const double velocityScalar = 75.0;
+	const double accelerationScalar = 125.0;
 
 	double frameTime = 0.0;
 	while (true) {
@@ -161,8 +172,23 @@ int main() {
 		//	Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
 		//}
 
+		math::Vector3 target(mx, my);
+		math::Vector3 direction = target.subtract(position).normalize();
+
+		velocity = direction.multiply(velocityScalar);
+		acceleration.x += direction.x * accelerationScalar;
+		acceleration.y += direction.y * accelerationScalar;
+
+		math::Vector3 velocityComponent = velocity.multiply(dt);
+		math::Vector3 accelerationComponent = acceleration.multiply(0.5 * dt * dt);
+
+		//First order: p2 = p1 + v * dt
+		//Second order: p2 = p1 + v * dt + 0.5 * a * dt * dt <---
+		position = position.add(velocityComponent.add(accelerationComponent));
+
 		Shapes::set_color(1.0f, 1.0f, 1.0f);
 		Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
+		Shapes::draw_rectangle(true, position.x, position.y, 50.0f, 37.5f);
 
 		//Lag switches.
 		if (GetAsyncKeyState(49)) {
