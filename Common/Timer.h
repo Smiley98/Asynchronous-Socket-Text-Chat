@@ -1,11 +1,11 @@
 #pragma once
 #include <ctime>
+#include <chrono>
 struct Timer {
 	Timer();
 	double elapsed();
 	void restart();
 
 private:
-	clock_t m_start;
-	clock_t m_end;
+	std::chrono::high_resolution_clock::time_point m_start;
 };

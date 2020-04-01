@@ -7,10 +7,11 @@ Timer::Timer()
 
 double Timer::elapsed()
 {
-	return (clock() - m_start) / (CLOCKS_PER_SEC / 1000);
+	using sec = std::chrono::duration<double>;
+	return std::chrono::duration_cast<sec>(std::chrono::high_resolution_clock::now() - m_start).count();
 }
 
 void Timer::restart()
 {
-	m_start = clock();
+	m_start = std::chrono::high_resolution_clock::now();
 }

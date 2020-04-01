@@ -52,9 +52,9 @@ int main() {
 	client.start();
 	client.setState(ClientState::CONSUME);
 
-	std::vector<Particle> particles(5);
+	std::vector<Particle> particles(1);
 	for (auto& particle : particles)
-		particle.velocity = 5.0f;
+		particle.velocity = 50.0f;
 	
 	Timer networkTimer, updateTimer, latencyTimer, frameTimer;
 	PacketBuffer incoming;
@@ -76,14 +76,9 @@ int main() {
 
 	//No frame limiting for now, just run as fast as possible so network latency is evident.
 	double updateDelay = 0.0;
-
-	uint64_t counter = 0;
-	float dt1 = 0.0f, dt2 = 0.0f;
-	float px = 0.0f, py = 0.0f;
-	float vx = 0.0f, vy = 0.0f;
+	double frameTime = 0.0;
 
 	while (true) {
-		counter++;
 		frameTimer.restart();
 		//Do routine network stuff every 0.1 seconds.
 		if (networkTimer.elapsed() >= 100.0 + lag) {
@@ -146,24 +141,25 @@ int main() {
 		
 		if (updateTimer.elapsed() >= updateDelay) {
 			updateTimer.restart();
-			counter % 2 == 0 ? dt1 = frameTimer.elapsed() : dt2 = frameTimer.elapsed();
 
 			//Do latency compensation prediction (dead reckoning) if you're not the host.
-			float dt = master ? dt2 - dt1 : (dt2 - dt1) + latency;
-			//px = px + ax * dt;
-			//py = py + ay * dt;
+			float dt = master ? frameTime : frameTime + latency;
+
 			printf("%f\n", dt);
 			Shapes::set_color(1.0f, 0.0f, 0.0f);
 			for (auto& particle : particles) {
-				math::Vector3 target(mx, my);
-				math::Vector3 direction = target.subtract(particle.position);
-				direction = direction.normalize();
-				//particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
+				particle.position = particle.position.add(particle.velocity.multiply(dt));
+				printf("%f %f\n", particle.position.x, particle.position.y);
 				Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
+				//math::Vector3 target(mx, my);
+				//math::Vector3 direction = target.subtract(particle.position);
+				//direction = direction.normalize();
+				//particle.position = particle.position.add(direction.multiply(particle.velocity.multiply(dt)));
+				//Shapes::draw_rectangle(true, particle.position.x, particle.position.y, 10.0f, 7.5f);
 			}
 
 			Shapes::set_color(1.0f, 1.0f, 1.0f);
-			Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
+			//Shapes::draw_rectangle(true, mx, my, 50.0f, 37.5f);
 			window.update();
 
 			//Lag switches.
@@ -193,6 +189,7 @@ int main() {
 				exit(0);
 			}
 		}
+		frameTime = frameTimer.elapsed();
 	}
 
 	return getchar();
